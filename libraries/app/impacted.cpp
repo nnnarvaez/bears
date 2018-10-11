@@ -22,16 +22,16 @@
  * THE SOFTWARE.
  */
 
-#include <steemit/protocol/authority.hpp>
+#include <bearshares/protocol/authority.hpp>
 
-#include <steemit/app/impacted.hpp>
+#include <bearshares/app/impacted.hpp>
 
 #include <fc/utility.hpp>
 
-namespace steemit { namespace app {
+namespace bearshares { namespace app {
 
 using namespace fc;
-using namespace steemit::protocol;
+using namespace bearshares::protocol;
 
 // TODO:  Review all of these, especially no-ops
 struct get_impacted_account_visitor
@@ -114,7 +114,7 @@ struct get_impacted_account_visitor
       _impacted.insert( op.agent );
    }
 
-   void operator()( const transfer_to_vesting_operation& op )
+   void operator()( const transfer_to_coining_operation& op )
    {
       _impacted.insert( op.from );
 
@@ -124,7 +124,7 @@ struct get_impacted_account_visitor
       }
    }
 
-   void operator()( const set_withdraw_vesting_route_operation& op )
+   void operator()( const set_withdraw_coining_route_operation& op )
    {
       _impacted.insert( op.from_account );
       _impacted.insert( op.to_account );
@@ -198,7 +198,7 @@ struct get_impacted_account_visitor
       _impacted.insert( op.to );
    }
 
-   void operator()( const delegate_vesting_shares_operation& op )
+   void operator()( const delegate_coining_shares_operation& op )
    {
       _impacted.insert( op.delegator );
       _impacted.insert( op.delegatee );
@@ -232,7 +232,7 @@ struct get_impacted_account_visitor
       _impacted.insert( op.owner );
    }
 
-   void operator()( const fill_vesting_withdraw_operation& op )
+   void operator()( const fill_coining_withdraw_operation& op )
    {
       _impacted.insert( op.from_account );
       _impacted.insert( op.to_account );
@@ -255,7 +255,7 @@ struct get_impacted_account_visitor
       _impacted.insert( op.to );
    }
 
-   void operator()( const return_vesting_delegation_operation& op )
+   void operator()( const return_coining_delegation_operation& op )
    {
       _impacted.insert( op.account );
    }

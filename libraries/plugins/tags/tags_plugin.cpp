@@ -1,15 +1,15 @@
-#include <steemit/tags/tags_plugin.hpp>
+#include <bearshares/tags/tags_plugin.hpp>
 
-#include <steemit/app/impacted.hpp>
+#include <bearshares/app/impacted.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <bearshares/protocol/config.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/hardfork.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
+#include <bearshares/chain/database.hpp>
+#include <bearshares/chain/hardfork.hpp>
+#include <bearshares/chain/index.hpp>
+#include <bearshares/chain/operation_notification.hpp>
+#include <bearshares/chain/account_object.hpp>
+#include <bearshares/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -19,11 +19,11 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 
-namespace steemit { namespace tags {
+namespace bearshares { namespace tags {
 
 namespace detail {
 
-using namespace steemit::protocol;
+using namespace bearshares::protocol;
 
 class tags_plugin_impl
 {
@@ -33,7 +33,7 @@ class tags_plugin_impl
       { }
       virtual ~tags_plugin_impl();
 
-      steemit::chain::database& database()
+      bearshares::chain::database& database()
       {
          return _self.database();
       }
@@ -391,7 +391,7 @@ struct operation_visitor
 
    void operator()( const transfer_operation& op )const
    {
-      if( op.to == STEEMIT_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
+      if( op.to == BEARSHARES_NULL_ACCOUNT && op.amount.symbol == BSD_SYMBOL )
       {
          vector<string> part; part.reserve(4);
          auto path = op.memo;
@@ -533,6 +533,6 @@ void tags_plugin::plugin_startup()
 {
 }
 
-} } /// steemit::tags
+} } /// bearshares::tags
 
-STEEMIT_DEFINE_PLUGIN( tags, steemit::tags::tags_plugin )
+BEARSHARES_DEFINE_PLUGIN( tags, bearshares::tags::tags_plugin )

@@ -2,15 +2,15 @@
 #include <graphene/utilities/key_conversion.hpp>
 #include <graphene/utilities/words.hpp>
 
-#include <steemit/app/api.hpp>
-#include <steemit/protocol/base.hpp>
-#include <steemit/follow/follow_operations.hpp>
-#include <steemit/private_message/private_message_operations.hpp>
-#include <steemit/wallet/wallet.hpp>
-#include <steemit/wallet/api_documentation.hpp>
-#include <steemit/wallet/reflect_util.hpp>
+#include <bearshares/app/api.hpp>
+#include <bearshares/protocol/base.hpp>
+#include <bearshares/follow/follow_operations.hpp>
+#include <bearshares/private_message/private_message_operations.hpp>
+#include <bearshares/wallet/wallet.hpp>
+#include <bearshares/wallet/api_documentation.hpp>
+#include <bearshares/wallet/reflect_util.hpp>
 
-#include <steemit/account_by_key/account_by_key_api.hpp>
+#include <bearshares/account_by_key/account_by_key_api.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -60,7 +60,7 @@
 
 #define BRAIN_KEY_WORD_COUNT 16
 
-namespace steemit { namespace wallet {
+namespace bearshares { namespace wallet {
 
 namespace detail {
 
@@ -295,9 +295,9 @@ public:
                                                                           time_point_sec(time_point::now()),
                                                                           " old");
       result["participation"] = (100*dynamic_props.recent_slots_filled.popcount()) / 128.0;
-      result["median_sbd_price"] = _remote_db->get_current_median_history_price();
+      result["median_bsd_price"] = _remote_db->get_current_median_history_price();
       result["account_creation_fee"] = _remote_db->get_chain_properties().account_creation_fee;
-      result["post_reward_fund"] = fc::variant(_remote_db->get_reward_fund( STEEMIT_POST_REWARD_FUND_NAME )).get_object();
+      //result["post_reward_fund"] = fc::variant(_remote_db->get_reward_fund( BEARSHARES_POST_REWARD_FUND_NAME )).get_object();
       return result;
    }
 
@@ -309,10 +309,10 @@ public:
          client_version = client_version.substr( pos + 1 );
 
       fc::mutable_variant_object result;
-      result["blockchain_version"]       = STEEMIT_BLOCKCHAIN_VERSION;
+      result["blockchain_version"]       = BEARSHARES_BLOCKCHAIN_VERSION;
       result["client_version"]           = client_version;
-      result["steem_revision"]           = graphene::utilities::git_revision_sha;
-      result["steem_revision_age"]       = fc::get_approximate_relative_time_string( fc::time_point_sec( graphene::utilities::git_revision_unix_timestamp ) );
+      result["bears_revision"]           = graphene::utilities::git_revision_sha;
+      result["bears_revision_age"]       = fc::get_approximate_relative_time_string( fc::time_point_sec( graphene::utilities::git_revision_unix_timestamp ) );
       result["fc_revision"]              = fc::git_revision_sha;
       result["fc_revision_age"]          = fc::get_approximate_relative_time_string( fc::time_point_sec( fc::git_revision_unix_timestamp ) );
       result["compile_date"]             = "compiled on " __DATE__ " at " __TIME__;
@@ -335,7 +335,7 @@ public:
       {
          auto v = _remote_api->get_version();
          result["server_blockchain_version"] = v.blockchain_version;
-         result["server_steem_revision"] = v.steem_revision;
+         result["server_bears_revision"] = v.bears_revision;
          result["server_fc_revision"] = v.fc_revision;
       }
       catch( fc::exception& )
@@ -388,7 +388,7 @@ public:
       fc::optional<fc::ecc::private_key> optional_private_key = wif_to_key(wif_key);
       if (!optional_private_key)
          FC_THROW("Invalid private key");
-      steemit::chain::public_key_type wif_pub_key = optional_private_key->get_public_key();
+      bearshares::chain::public_key_type wif_pub_key = optional_private_key->get_public_key();
 
       _keys[wif_pub_key] = wif_key;
       return true;
@@ -459,7 +459,7 @@ public:
       for (int key_index = 0; ; ++key_index)
       {
          fc::ecc::private_key derived_private_key = derive_private_key(key_to_wif(parent_key), key_index);
-         steemit::chain::public_key_type derived_public_key = derived_private_key.get_public_key();
+         bearshares::chain::public_key_type derived_public_key = derived_private_key.get_public_key();
          if( _keys.find(derived_public_key) == _keys.end() )
          {
             if (number_of_consecutive_unused_keys)
@@ -495,9 +495,9 @@ public:
          int memo_key_index = find_first_unused_derived_key_index(active_privkey);
          fc::ecc::private_key memo_privkey = derive_private_key( key_to_wif(active_privkey), memo_key_index);
 
-         steemit::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
-         steemit::chain::public_key_type active_pubkey = active_privkey.get_public_key();
-         steemit::chain::public_key_type memo_pubkey = memo_privkey.get_public_key();
+         bearshares::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
+         bearshares::chain::public_key_type active_pubkey = active_privkey.get_public_key();
+         bearshares::chain::public_key_type memo_pubkey = memo_privkey.get_public_key();
 
          account_create_operation account_create_op;
 
@@ -543,7 +543,7 @@ public:
 
    void set_transaction_expiration( uint32_t tx_expiration_seconds )
    {
-      FC_ASSERT( tx_expiration_seconds < STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      FC_ASSERT( tx_expiration_seconds < BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       _tx_expiration_seconds = tx_expiration_seconds;
    }
 
@@ -674,7 +674,7 @@ public:
       }
 
       auto minimal_signing_keys = tx.minimize_required_signatures(
-         STEEMIT_CHAIN_ID,
+         BEARSHARES_CHAIN_ID,
          available_keys,
          [&]( const string& account_name ) -> const authority&
          { return (get_account_from_lut( account_name ).active); },
@@ -682,7 +682,7 @@ public:
          { return (get_account_from_lut( account_name ).owner); },
          [&]( const string& account_name ) -> const authority&
          { return (get_account_from_lut( account_name ).posting); },
-         STEEMIT_MAX_SIG_CHECK_DEPTH,
+         BEARSHARES_MAX_SIG_CHECK_DEPTH,
          true
          );
 
@@ -690,7 +690,7 @@ public:
       {
          auto it = available_private_keys.find(k);
          FC_ASSERT( it != available_private_keys.end() );
-         tx.sign( it->second, STEEMIT_CHAIN_ID );
+         tx.sign( it->second, BEARSHARES_CHAIN_ID );
       }
 
       if( broadcast ) {
@@ -727,23 +727,23 @@ public:
          std::stringstream out;
 
          auto accounts = result.as<vector<account_api_obj>>();
-         asset total_steem;
-         asset total_vest(0, VESTS_SYMBOL );
-         asset total_sbd(0, SBD_SYMBOL );
+         asset total_bears;
+         asset total_coin(0, COINS_SYMBOL );
+         asset total_bsd(0, BSD_SYMBOL );
          for( const auto& a : accounts ) {
-            total_steem += a.balance;
-            total_vest  += a.vesting_shares;
-            total_sbd  += a.sbd_balance;
+            total_bears += a.balance;
+            total_coin  += a.coining_shares;
+            total_bsd  += a.bsd_balance;
             out << std::left << std::setw( 17 ) << std::string(a.name)
                 << std::right << std::setw(18) << fc::variant(a.balance).as_string() <<" "
-                << std::right << std::setw(26) << fc::variant(a.vesting_shares).as_string() <<" "
-                << std::right << std::setw(16) << fc::variant(a.sbd_balance).as_string() <<"\n";
+                << std::right << std::setw(26) << fc::variant(a.coining_shares).as_string() <<" "
+                << std::right << std::setw(16) << fc::variant(a.bsd_balance).as_string() <<"\n";
          }
          out << "-------------------------------------------------------------------------\n";
             out << std::left << std::setw( 17 ) << "TOTAL"
-                << std::right << std::setw(18) << fc::variant(total_steem).as_string() <<" "
-                << std::right << std::setw(26) << fc::variant(total_vest).as_string() <<" "
-                << std::right << std::setw(16) << fc::variant(total_sbd).as_string() <<"\n";
+                << std::right << std::setw(18) << fc::variant(total_bears).as_string() <<" "
+                << std::right << std::setw(26) << fc::variant(total_coin).as_string() <<" "
+                << std::right << std::setw(16) << fc::variant(total_bsd).as_string() <<"\n";
          return out.str();
       };
       m["get_account_history"] = []( variant result, const fc::variants& a ) {
@@ -781,7 +781,7 @@ public:
              ss << ' ' << setw( 10 ) << o.orderid;
              ss << ' ' << setw( 10 ) << o.real_price;
              ss << ' ' << setw( 10 ) << fc::variant( asset( o.for_sale, o.sell_price.base.symbol ) ).as_string();
-             ss << ' ' << setw( 10 ) << (o.sell_price.base.symbol == STEEM_SYMBOL ? "SELL" : "BUY");
+             ss << ' ' << setw( 10 ) << (o.sell_price.base.symbol == BEARS_SYMBOL ? "SELL" : "BUY");
              ss << "\n";
           }
           return ss.str();
@@ -789,21 +789,21 @@ public:
       m["get_order_book"] = []( variant result, const fc::variants& a ) {
          auto orders = result.as< order_book >();
          std::stringstream ss;
-         asset bid_sum = asset( 0, SBD_SYMBOL );
-         asset ask_sum = asset( 0, SBD_SYMBOL );
+         asset bid_sum = asset( 0, BSD_SYMBOL );
+         asset ask_sum = asset( 0, BSD_SYMBOL );
          int spacing = 24;
 
          ss << setiosflags( ios::fixed ) << setiosflags( ios::left ) ;
 
          ss << ' ' << setw( ( spacing * 4 ) + 6 ) << "Bids" << "Asks\n"
             << ' '
-            << setw( spacing + 3 ) << "Sum(SBD)"
-            << setw( spacing + 1) << "SBD"
-            << setw( spacing + 1 ) << "STEEM"
+            << setw( spacing + 3 ) << "Sum(BSD)"
+            << setw( spacing + 1) << "BSD"
+            << setw( spacing + 1 ) << "BEARS"
             << setw( spacing + 1 ) << "Price"
             << setw( spacing + 1 ) << "Price"
-            << setw( spacing + 1 ) << "STEEM "
-            << setw( spacing + 1 ) << "SBD " << "Sum(SBD)"
+            << setw( spacing + 1 ) << "BEARS "
+            << setw( spacing + 1 ) << "BSD " << "Sum(BSD)"
             << "\n====================================================================================================="
             << "|=====================================================================================================\n";
 
@@ -811,11 +811,11 @@ public:
          {
             if ( i < orders.bids.size() )
             {
-               bid_sum += asset( orders.bids[i].sbd, SBD_SYMBOL );
+               bid_sum += asset( orders.bids[i].bsd, BSD_SYMBOL );
                ss
                   << ' ' << setw( spacing ) << bid_sum.to_string()
-                  << ' ' << setw( spacing ) << asset( orders.bids[i].sbd, SBD_SYMBOL ).to_string()
-                  << ' ' << setw( spacing ) << asset( orders.bids[i].steem, STEEM_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << asset( orders.bids[i].bsd, BSD_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << asset( orders.bids[i].bears, BEARS_SYMBOL ).to_string()
                   << ' ' << setw( spacing ) << orders.bids[i].real_price; //(~orders.bids[i].order_price).to_real();
             }
             else
@@ -827,11 +827,11 @@ public:
 
             if ( i < orders.asks.size() )
             {
-               ask_sum += asset( orders.asks[i].sbd, SBD_SYMBOL );
+               ask_sum += asset( orders.asks[i].bsd, BSD_SYMBOL );
                //ss << ' ' << setw( spacing ) << (~orders.asks[i].order_price).to_real()
                ss << ' ' << setw( spacing ) << orders.asks[i].real_price
-                  << ' ' << setw( spacing ) << asset( orders.asks[i].steem, STEEM_SYMBOL ).to_string()
-                  << ' ' << setw( spacing ) << asset( orders.asks[i].sbd, SBD_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << asset( orders.asks[i].bears, BEARS_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << asset( orders.asks[i].bsd, BSD_SYMBOL ).to_string()
                   << ' ' << setw( spacing ) << ask_sum.to_string();
             }
 
@@ -852,7 +852,7 @@ public:
          ss << ' ' << std::left << std::setw( 20 ) << "From";
          ss << ' ' << std::left << std::setw( 20 ) << "To";
          ss << ' ' << std::right << std::setw( 8 ) << "Percent";
-         ss << ' ' << std::right << std::setw( 9 ) << "Auto-Vest";
+         ss << ' ' << std::right << std::setw( 9 ) << "Auto-Coin";
          ss << "\n==============================================================\n";
 
          for( auto r : routes )
@@ -860,7 +860,7 @@ public:
             ss << ' ' << std::left << std::setw( 20 ) << r.from_account;
             ss << ' ' << std::left << std::setw( 20 ) << r.to_account;
             ss << ' ' << std::right << std::setw( 8 ) << std::setprecision( 2 ) << std::fixed << double( r.percent ) / 100;
-            ss << ' ' << std::right << std::setw( 9 ) << ( r.auto_vest ? "true" : "false" ) << std::endl;
+            ss << ' ' << std::right << std::setw( 9 ) << ( r.auto_coin ? "true" : "false" ) << std::endl;
          }
 
          return ss.str();
@@ -967,11 +967,11 @@ public:
    const string _wallet_filename_extension = ".wallet";
 };
 
-} } } // steemit::wallet::detail
+} } } // bearshares::wallet::detail
 
 
 
-namespace steemit { namespace wallet {
+namespace bearshares { namespace wallet {
 
 wallet_api::wallet_api(const wallet_data& initial_data, fc::api<login_api> rapi)
    : my(new detail::wallet_api_impl(*this, initial_data, rapi))
@@ -1299,7 +1299,7 @@ annotated_signed_transaction wallet_api::create_account_with_keys( string creato
    op.posting = authority( 1, posting, 1 );
    op.memo_key = memo;
    op.json_metadata = json_meta;
-   op.fee = my->_remote_db->get_chain_properties().account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL );
+   op.fee = my->_remote_db->get_chain_properties().account_creation_fee * asset( BEARSHARES_CREATE_ACCOUNT_WITH_BEARS_MODIFIER, BEARS_SYMBOL );
 
    signed_transaction tx;
    tx.operations.push_back(op);
@@ -1314,8 +1314,8 @@ annotated_signed_transaction wallet_api::create_account_with_keys( string creato
  * wallet.
  */
 annotated_signed_transaction wallet_api::create_account_with_keys_delegated( string creator,
-                                      asset steem_fee,
-                                      asset delegated_vests,
+                                      asset bears_fee,
+                                      asset delegated_coins,
                                       string new_account_name,
                                       string json_meta,
                                       public_key_type owner,
@@ -1333,8 +1333,8 @@ annotated_signed_transaction wallet_api::create_account_with_keys_delegated( str
    op.posting = authority( 1, posting, 1 );
    op.memo_key = memo;
    op.json_metadata = json_meta;
-   op.fee = steem_fee;
-   op.delegation = delegated_vests;
+   op.fee = bears_fee;
+   op.delegation = delegated_coins;
 
    signed_transaction tx;
    tx.operations.push_back(op);
@@ -1657,7 +1657,7 @@ annotated_signed_transaction wallet_api::update_account_memo_key( string account
    return my->sign_transaction( tx, broadcast );
 }
 
-annotated_signed_transaction wallet_api::delegate_vesting_shares( string delegator, string delegatee, asset vesting_shares, bool broadcast )
+annotated_signed_transaction wallet_api::delegate_coining_shares( string delegator, string delegatee, asset coining_shares, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
 
@@ -1666,10 +1666,10 @@ annotated_signed_transaction wallet_api::delegate_vesting_shares( string delegat
    FC_ASSERT( delegator == accounts[0].name, "Delegator account is not right?" );
    FC_ASSERT( delegatee == accounts[1].name, "Delegator account is not right?" );
 
-   delegate_vesting_shares_operation op;
+   delegate_coining_shares_operation op;
    op.delegator = delegator;
    op.delegatee = delegatee;
-   op.vesting_shares = vesting_shares;
+   op.coining_shares = coining_shares;
 
    signed_transaction tx;
    tx.operations.push_back( op );
@@ -1700,7 +1700,7 @@ annotated_signed_transaction wallet_api::create_account( string creator, string 
  *  This method will genrate new owner, active, and memo keys for the new account which
  *  will be controlable by this wallet.
  */
-annotated_signed_transaction wallet_api::create_account_delegated( string creator, asset steem_fee, asset delegated_vests, string new_account_name, string json_meta, bool broadcast )
+annotated_signed_transaction wallet_api::create_account_delegated( string creator, asset bears_fee, asset delegated_coins, string new_account_name, string json_meta, bool broadcast )
 { try {
    FC_ASSERT( !is_locked() );
    auto owner = suggest_brain_key();
@@ -1711,7 +1711,7 @@ annotated_signed_transaction wallet_api::create_account_delegated( string creato
    import_key( active.wif_priv_key );
    import_key( posting.wif_priv_key );
    import_key( memo.wif_priv_key );
-   return create_account_with_keys_delegated( creator, steem_fee, delegated_vests, new_account_name, json_meta,  owner.pub_key, active.pub_key, posting.pub_key, memo.pub_key, broadcast );
+   return create_account_with_keys_delegated( creator, bears_fee, delegated_coins, new_account_name, json_meta,  owner.pub_key, active.pub_key, posting.pub_key, memo.pub_key, broadcast );
 } FC_CAPTURE_AND_RETHROW( (creator)(new_account_name)(json_meta) ) }
 
 
@@ -1871,8 +1871,8 @@ annotated_signed_transaction wallet_api::escrow_transfer(
       string to,
       string agent,
       uint32_t escrow_id,
-      asset sbd_amount,
-      asset steem_amount,
+      asset bsd_amount,
+      asset bears_amount,
       asset fee,
       time_point_sec ratification_deadline,
       time_point_sec escrow_expiration,
@@ -1886,8 +1886,8 @@ annotated_signed_transaction wallet_api::escrow_transfer(
    op.to = to;
    op.agent = agent;
    op.escrow_id = escrow_id;
-   op.sbd_amount = sbd_amount;
-   op.steem_amount = steem_amount;
+   op.bsd_amount = bsd_amount;
+   op.bears_amount = bears_amount;
    op.fee = fee;
    op.ratification_deadline = ratification_deadline;
    op.escrow_expiration = escrow_expiration;
@@ -1956,8 +1956,8 @@ annotated_signed_transaction wallet_api::escrow_release(
    string who,
    string receiver,
    uint32_t escrow_id,
-   asset sbd_amount,
-   asset steem_amount,
+   asset bsd_amount,
+   asset bears_amount,
    bool broadcast
 )
 {
@@ -1969,8 +1969,8 @@ annotated_signed_transaction wallet_api::escrow_release(
    op.who = who;
    op.receiver = receiver;
    op.escrow_id = escrow_id;
-   op.sbd_amount = sbd_amount;
-   op.steem_amount = steem_amount;
+   op.bsd_amount = bsd_amount;
+   op.bears_amount = bears_amount;
 
    signed_transaction tx;
    tx.operations.push_back( op );
@@ -2036,10 +2036,10 @@ annotated_signed_transaction wallet_api::cancel_transfer_from_savings( string fr
    return my->sign_transaction( tx, broadcast );
 }
 
-annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string to, asset amount, bool broadcast )
+annotated_signed_transaction wallet_api::transfer_to_coining(string from, string to, asset amount, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
-    transfer_to_vesting_operation op;
+    transfer_to_coining_operation op;
     op.from = from;
     op.to = (to == from ? "" : to);
     op.amount = amount;
@@ -2051,12 +2051,12 @@ annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string
    return my->sign_transaction( tx, broadcast );
 }
 
-annotated_signed_transaction wallet_api::withdraw_vesting(string from, asset vesting_shares, bool broadcast )
+annotated_signed_transaction wallet_api::withdraw_coining(string from, asset coining_shares, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
-    withdraw_vesting_operation op;
+    withdraw_coining_operation op;
     op.account = from;
-    op.vesting_shares = vesting_shares;
+    op.coining_shares = coining_shares;
 
     signed_transaction tx;
     tx.operations.push_back( op );
@@ -2065,14 +2065,14 @@ annotated_signed_transaction wallet_api::withdraw_vesting(string from, asset ves
    return my->sign_transaction( tx, broadcast );
 }
 
-annotated_signed_transaction wallet_api::set_withdraw_vesting_route( string from, string to, uint16_t percent, bool auto_vest, bool broadcast )
+annotated_signed_transaction wallet_api::set_withdraw_coining_route( string from, string to, uint16_t percent, bool auto_coin, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
-    set_withdraw_vesting_route_operation op;
+    set_withdraw_coining_route_operation op;
     op.from_account = from;
     op.to_account = to;
     op.percent = percent;
-    op.auto_vest = auto_vest;
+    op.auto_coin = auto_coin;
 
     signed_transaction tx;
     tx.operations.push_back( op );
@@ -2081,7 +2081,7 @@ annotated_signed_transaction wallet_api::set_withdraw_vesting_route( string from
    return my->sign_transaction( tx, broadcast );
 }
 
-annotated_signed_transaction wallet_api::convert_sbd(string from, asset amount, bool broadcast )
+annotated_signed_transaction wallet_api::convert_bsd(string from, asset amount, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
     convert_operation op;
@@ -2161,14 +2161,14 @@ annotated_signed_transaction wallet_api::decline_voting_rights( string account, 
    return my->sign_transaction( tx, broadcast );
 }
 
-annotated_signed_transaction wallet_api::claim_reward_balance( string account, asset reward_steem, asset reward_sbd, asset reward_vests, bool broadcast )
+annotated_signed_transaction wallet_api::claim_reward_balance( string account, asset reward_bears, asset reward_bsd, asset reward_coins, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
    claim_reward_balance_operation op;
    op.account = account;
-   op.reward_steem = reward_steem;
-   op.reward_sbd = reward_sbd;
-   op.reward_vests = reward_vests;
+   op.reward_bears = reward_bears;
+   op.reward_bsd = reward_bsd;
+   op.reward_coins = reward_coins;
 
    signed_transaction tx;
    tx.operations.push_back( op );
@@ -2276,7 +2276,7 @@ annotated_signed_transaction wallet_api::vote( string voter, string author, stri
    op.voter = voter;
    op.author = author;
    op.permlink = permlink;
-   op.weight = weight * STEEMIT_1_PERCENT;
+   op.weight = weight * BEARSHARES_1_PERCENT;
 
    signed_transaction tx;
    tx.operations.push_back( op );
@@ -2362,7 +2362,7 @@ annotated_signed_transaction      wallet_api::send_private_message( string from,
 
    custom_operation op;
    op.required_auths.insert(from);
-   op.id = STEEMIT_PRIVATE_MESSAGE_COP_ID;
+   op.id = BEARSHARES_PRIVATE_MESSAGE_COP_ID;
 
 
    private_message_operation pmo;
@@ -2469,5 +2469,5 @@ vector<extended_message_object>   wallet_api::get_outbox( string account, fc::ti
    return result;
 }
 
-} } // steemit::wallet
+} } // bearshares::wallet
 

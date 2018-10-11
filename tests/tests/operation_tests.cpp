@@ -1,16 +1,16 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/protocol/exceptions.hpp>
+#include <bearshares/protocol/exceptions.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/database_exceptions.hpp>
-#include <steemit/chain/hardfork.hpp>
-#include <steemit/chain/steem_objects.hpp>
+#include <bearshares/chain/database.hpp>
+#include <bearshares/chain/database_exceptions.hpp>
+#include <bearshares/chain/hardfork.hpp>
+#include <bearshares/chain/bears_objects.hpp>
 
-#include <steemit/chain/util/reward.hpp>
+#include <bearshares/chain/util/reward.hpp>
 
-#include <steemit/witness/witness_objects.hpp>
+#include <bearshares/witness/witness_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -20,9 +20,9 @@
 #include <iostream>
 #include <stdexcept>
 
-using namespace steemit;
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace bearshares;
+using namespace bearshares::chain;
+using namespace bearshares::protocol;
 using fc::string;
 
 BOOST_FIXTURE_TEST_SUITE( operation_tests, clean_database_fixture )
@@ -78,23 +78,23 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       signed_transaction tx;
       private_key_type priv_key = generate_private_key( "alice" );
 
-      const account_object& init = db.get_account( STEEMIT_INIT_MINER_NAME );
+      const account_object& init = db.get_account( BEARSHARES_INIT_MINER_NAME );
       asset init_starting_balance = init.balance;
 
       const auto& gpo = db.get_dynamic_global_properties();
 
       account_create_operation op;
 
-      op.fee = asset( 100, STEEM_SYMBOL );
+      op.fee = asset( 100, BEARS_SYMBOL );
       op.new_account_name = "alice";
-      op.creator = STEEMIT_INIT_MINER_NAME;
+      op.creator = BEARSHARES_INIT_MINER_NAME;
       op.owner = authority( 1, priv_key.get_public_key(), 1 );
       op.active = authority( 2, priv_key.get_public_key(), 2 );
       op.memo_key = priv_key.get_public_key();
       op.json_metadata = "{\"foo\":\"bar\"}";
 
       BOOST_TEST_MESSAGE( "--- Test normal account creation" );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
       tx.validate();
@@ -103,8 +103,8 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       const account_object& acct = db.get_account( "alice" );
       const account_authority_object& acct_auth = db.get< account_authority_object, by_account >( "alice" );
 
-      auto vest_shares = gpo.total_vesting_shares;
-      auto vests = gpo.total_vesting_fund_steem;
+      auto coin_shares = gpo.total_coining_shares;
+      auto coins = gpo.total_coining_fund_bears;
 
       BOOST_REQUIRE( acct.name == "alice" );
       BOOST_REQUIRE( acct_auth.owner == authority( 1, priv_key.get_public_key(), 1 ) );
@@ -113,12 +113,12 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       BOOST_REQUIRE( acct.proxy == "" );
       BOOST_REQUIRE( acct.created == db.head_block_time() );
       BOOST_REQUIRE( acct.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( acct.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( acct.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       BOOST_REQUIRE( acct.id._id == acct_auth.id._id );
 
-      /// because init_witness has created vesting shares and blocks have been produced, 100 STEEM is worth less than 100 vesting shares due to rounding
-      BOOST_REQUIRE( acct.vesting_shares.amount.value == ( op.fee * ( vest_shares / vests ) ).amount.value );
-      BOOST_REQUIRE( acct.vesting_withdraw_rate.amount.value == ASSET( "0.000000 VESTS" ).amount.value );
+      /// because init_witness has created coining shares and blocks have been produced, 100 BEARS is worth less than 100 coining shares due to rounding
+      BOOST_REQUIRE( acct.coining_shares.amount.value == ( op.fee * ( coin_shares / coins ) ).amount.value );
+      BOOST_REQUIRE( acct.coining_withdraw_rate.amount.value == ASSET( "0.000000 COINS" ).amount.value );
       BOOST_REQUIRE( acct.proxied_vsf_votes_total().value == 0 );
       BOOST_REQUIRE( ( init_starting_balance - ASSET( "0.100 TESTS" ) ).amount.value == init.balance.amount.value );
       validate_database();
@@ -132,10 +132,10 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       BOOST_REQUIRE( acct.memo_key == priv_key.get_public_key() );
       BOOST_REQUIRE( acct.proxy == "" );
       BOOST_REQUIRE( acct.created == db.head_block_time() );
-      BOOST_REQUIRE( acct.balance.amount.value == ASSET( "0.000 STEEM " ).amount.value );
-      BOOST_REQUIRE( acct.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
-      BOOST_REQUIRE( acct.vesting_shares.amount.value == ( op.fee * ( vest_shares / vests ) ).amount.value );
-      BOOST_REQUIRE( acct.vesting_withdraw_rate.amount.value == ASSET( "0.000000 VESTS" ).amount.value );
+      BOOST_REQUIRE( acct.balance.amount.value == ASSET( "0.000 BEARS " ).amount.value );
+      BOOST_REQUIRE( acct.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( acct.coining_shares.amount.value == ( op.fee * ( coin_shares / coins ) ).amount.value );
+      BOOST_REQUIRE( acct.coining_withdraw_rate.amount.value == ASSET( "0.000000 COINS" ).amount.value );
       BOOST_REQUIRE( acct.proxied_vsf_votes_total().value == 0 );
       BOOST_REQUIRE( ( init_starting_balance - ASSET( "0.100 TESTS" ) ).amount.value == init.balance.amount.value );
       validate_database();
@@ -143,11 +143,11 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       BOOST_TEST_MESSAGE( "--- Test failure when creator cannot cover fee" );
       tx.signatures.clear();
       tx.operations.clear();
-      op.fee = asset( db.get_account( STEEMIT_INIT_MINER_NAME ).balance.amount + 1, STEEM_SYMBOL );
+      op.fee = asset( db.get_account( BEARSHARES_INIT_MINER_NAME ).balance.amount + 1, BEARS_SYMBOL );
       op.new_account_name = "bob";
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure covering witness fee" );
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       op.fee = ASSET( "1.000 TESTS" );
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -190,7 +190,7 @@ BOOST_AUTO_TEST_CASE( account_update_validate )
          op.validate();
 
          signed_transaction tx;
-         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
          tx.operations.push_back( op );
          tx.sign( alice_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
@@ -224,25 +224,25 @@ BOOST_AUTO_TEST_CASE( account_update_authorities )
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
 
       BOOST_TEST_MESSAGE( "  Tests when owner authority is not updated ---" );
       BOOST_TEST_MESSAGE( "--- Test failure when no signature" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when wrong signature" );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when containing additional incorrect signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when containing duplicate signatures" );
       tx.signatures.clear();
       tx.sign( active_key, db.get_chain_id() );
       tx.sign( active_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success on active key" );
       tx.signatures.clear();
@@ -261,22 +261,22 @@ BOOST_AUTO_TEST_CASE( account_update_authorities )
       op.owner = authority( 1, active_key.get_public_key(), 1 );
       tx.operations.push_back( op );
       tx.sign( active_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_owner_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_owner_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when owner key and active key are present" );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0), tx_missing_owner_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0), tx_missing_owner_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate owner keys are present" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success when updating the owner authority with an owner key" );
       tx.signatures.clear();
@@ -308,7 +308,7 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -336,7 +336,7 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
       op.account = "bob";
       tx.operations.push_back( op );
       tx.sign( new_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception )
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception )
       validate_database();
 
 
@@ -349,7 +349,7 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
       op.posting->add_authorities( "dave", 1 );
       tx.operations.push_back( op );
       tx.sign( new_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -374,7 +374,7 @@ BOOST_AUTO_TEST_CASE( comment_authorities )
       BOOST_TEST_MESSAGE( "Testing: comment_authorities" );
 
       ACTORS( (alice)(bob) );
-      generate_blocks( 60 / STEEMIT_BLOCK_INTERVAL );
+      generate_blocks( 60 / BEARSHARES_BLOCK_INTERVAL );
 
       comment_operation op;
       op.author = "alice";
@@ -387,15 +387,15 @@ BOOST_AUTO_TEST_CASE( comment_authorities )
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_posting_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_posting_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.sign( alice_post_key, db.get_chain_id() );
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with post signature" );
       tx.signatures.clear();
@@ -404,12 +404,12 @@ BOOST_AUTO_TEST_CASE( comment_authorities )
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the creator's authority" );
       tx.signatures.clear();
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_posting_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_posting_auth );
 
       validate_database();
    }
@@ -423,7 +423,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_TEST_MESSAGE( "Testing: comment_apply" );
 
       ACTORS( (alice)(bob)(sam) )
-      generate_blocks( 60 / STEEMIT_BLOCK_INTERVAL );
+      generate_blocks( 60 / BEARSHARES_BLOCK_INTERVAL );
 
       comment_operation op;
       op.author = "alice";
@@ -435,7 +435,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       op.json_metadata = "{\"foo\":\"bar\"}";
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
 
       BOOST_TEST_MESSAGE( "--- Test Alice posting a root comment" );
       tx.operations.push_back( op );
@@ -451,7 +451,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE( alice_comment.created == db.head_block_time() );
       BOOST_REQUIRE( alice_comment.net_rshares.value == 0 );
       BOOST_REQUIRE( alice_comment.abs_rshares.value == 0 );
-      BOOST_REQUIRE( alice_comment.cashout_time == fc::time_point_sec( db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) ) );
+      BOOST_REQUIRE( alice_comment.cashout_time == fc::time_point_sec( db.head_block_time() + fc::seconds( BEARSHARES_CASHOUT_WINDOW_SECONDS ) ) );
 
       #ifndef IS_LOW_MEM
          BOOST_REQUIRE( to_string( alice_comment.title ) == op.title );
@@ -475,7 +475,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       tx.operations.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test Bob posting a comment on Alice's comment" );
       op.parent_permlink = "lorem";
@@ -496,7 +496,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE( bob_comment.created == db.head_block_time() );
       BOOST_REQUIRE( bob_comment.net_rshares.value == 0 );
       BOOST_REQUIRE( bob_comment.abs_rshares.value == 0 );
-      BOOST_REQUIRE( bob_comment.cashout_time == bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+      BOOST_REQUIRE( bob_comment.cashout_time == bob_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
       BOOST_REQUIRE( bob_comment.root_comment == alice_comment.id );
       validate_database();
 
@@ -523,11 +523,11 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE( sam_comment.created == db.head_block_time() );
       BOOST_REQUIRE( sam_comment.net_rshares.value == 0 );
       BOOST_REQUIRE( sam_comment.abs_rshares.value == 0 );
-      BOOST_REQUIRE( sam_comment.cashout_time == sam_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+      BOOST_REQUIRE( sam_comment.cashout_time == sam_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
       BOOST_REQUIRE( sam_comment.root_comment == alice_comment.id );
       validate_database();
 
-      generate_blocks( 60 * 5 / STEEMIT_BLOCK_INTERVAL + 1 );
+      generate_blocks( 60 * 5 / BEARSHARES_BLOCK_INTERVAL + 1 );
 
       BOOST_TEST_MESSAGE( "--- Test modifying a comment" );
       const auto& mod_sam_comment = db.get_comment( "sam", string( "dolor" ) );
@@ -543,7 +543,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
 
       db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& o)
       {
-         o.total_reward_shares2 = steemit::chain::util::evaluate_reward_curve( 10 );
+         o.total_reward_shares2 = bearshares::chain::util::evaluate_reward_curve( 10 );
       });
 
       tx.signatures.clear();
@@ -552,7 +552,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       op.body = "bar";
       op.json_metadata = "{\"bar\":\"foo\"}";
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -562,7 +562,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE( to_string( mod_sam_comment.parent_permlink ) == op.parent_permlink );
       BOOST_REQUIRE( mod_sam_comment.last_update == db.head_block_time() );
       BOOST_REQUIRE( mod_sam_comment.created == created );
-      BOOST_REQUIRE( mod_sam_comment.cashout_time == mod_sam_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+      BOOST_REQUIRE( mod_sam_comment.cashout_time == mod_sam_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure posting withing 1 minute" );
@@ -572,20 +572,20 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       op.parent_permlink = "test";
       tx.operations.clear();
       tx.signatures.clear();
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( 60 * 5 / STEEMIT_BLOCK_INTERVAL );
+      generate_blocks( 60 * 5 / BEARSHARES_BLOCK_INTERVAL );
 
       op.permlink = "amet";
       tx.operations.clear();
       tx.signatures.clear();
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       validate_database();
 
@@ -604,7 +604,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       ACTORS( (alice) )
       generate_block();
 
-      vest( "alice", ASSET( "1000.000 TESTS" ) );
+      coin( "alice", ASSET( "1000.000 TESTS" ) );
 
       generate_block();
 
@@ -622,10 +622,10 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       vote.voter = "alice";
       vote.author = "alice";
       vote.permlink = "test1";
-      vote.weight = STEEMIT_100_PERCENT;
+      vote.weight = BEARSHARES_100_PERCENT;
       tx.operations.push_back( comment );
       tx.operations.push_back( vote );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MIN_TRANSACTION_EXPIRATION_LIMIT );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -637,13 +637,13 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test success deleting a comment with negative rshares" );
 
       generate_block();
-      vote.weight = -1 * STEEMIT_100_PERCENT;
+      vote.weight = -1 * BEARSHARES_100_PERCENT;
       tx.clear();
       tx.operations.push_back( vote );
       tx.operations.push_back( op );
@@ -655,22 +655,22 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
 
 
       BOOST_TEST_MESSAGE( "--- Test failure deleting a comment past cashout" );
-      generate_blocks( STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() / STEEMIT_BLOCK_INTERVAL );
+      generate_blocks( BEARSHARES_MIN_ROOT_COMMENT_INTERVAL.to_seconds() / BEARSHARES_BLOCK_INTERVAL );
 
       tx.clear();
       tx.operations.push_back( comment );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MIN_TRANSACTION_EXPIRATION_LIMIT );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( STEEMIT_CASHOUT_WINDOW_SECONDS / STEEMIT_BLOCK_INTERVAL );
+      generate_blocks( BEARSHARES_CASHOUT_WINDOW_SECONDS / BEARSHARES_BLOCK_INTERVAL );
       BOOST_REQUIRE( db.get_comment( "alice", string( "test1" ) ).cashout_time == fc::time_point_sec::maximum() );
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MIN_TRANSACTION_EXPIRATION_LIMIT );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test failure deleting a comment with a reply" );
@@ -680,16 +680,16 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       comment.parent_permlink = "test1";
       tx.clear();
       tx.operations.push_back( comment );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MIN_TRANSACTION_EXPIRATION_LIMIT );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() / STEEMIT_BLOCK_INTERVAL );
+      generate_blocks( BEARSHARES_MIN_ROOT_COMMENT_INTERVAL.to_seconds() / BEARSHARES_BLOCK_INTERVAL );
       comment.permlink = "test3";
       comment.parent_permlink = "test2";
       tx.clear();
       tx.operations.push_back( comment );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MIN_TRANSACTION_EXPIRATION_LIMIT );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -697,7 +697,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -733,11 +733,11 @@ BOOST_AUTO_TEST_CASE( vote_apply )
       ACTORS( (alice)(bob)(sam)(dave) )
       generate_block();
 
-      vest( "alice", ASSET( "10.000 TESTS" ) );
+      coin( "alice", ASSET( "10.000 TESTS" ) );
       validate_database();
-      vest( "bob" , ASSET( "10.000 TESTS" ) );
-      vest( "sam" , ASSET( "10.000 TESTS" ) );
-      vest( "dave" , ASSET( "10.000 TESTS" ) );
+      coin( "bob" , ASSET( "10.000 TESTS" ) );
+      coin( "sam" , ASSET( "10.000 TESTS" ) );
+      coin( "dave" , ASSET( "10.000 TESTS" ) );
       generate_block();
 
       const auto& vote_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
@@ -753,7 +753,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          comment_op.title = "bar";
          comment_op.body = "foo bar";
          tx.operations.push_back( comment_op );
-         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
          tx.sign( alice_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
 
@@ -766,11 +766,11 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          op.voter = "alice";
          op.author = "bob";
          op.permlink = "foo";
-         op.weight = STEEMIT_100_PERCENT;
+         op.weight = BEARSHARES_100_PERCENT;
          tx.operations.push_back( op );
          tx.sign( alice_private_key, db.get_chain_id() );
 
-         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+         BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
          validate_database();
 
@@ -782,7 +782,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.push_back( op );
          tx.sign( alice_private_key, db.get_chain_id() );
 
-         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+         BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
          validate_database();
 
@@ -790,7 +790,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          auto old_voting_power = alice.voting_power;
 
-         op.weight = STEEMIT_100_PERCENT;
+         op.weight = BEARSHARES_100_PERCENT;
          op.author = "alice";
          tx.operations.clear();
          tx.signatures.clear();
@@ -801,19 +801,19 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          auto& alice_comment = db.get_comment( "alice", string( "foo" ) );
          auto itr = vote_idx.find( std::make_tuple( alice_comment.id, alice.id ) );
-         int64_t max_vote_denom = ( db.get_dynamic_global_properties().vote_power_reserve_rate * STEEMIT_VOTE_REGENERATION_SECONDS ) / (60*60*24);
+         int64_t max_vote_denom = ( db.get_dynamic_global_properties().vote_power_reserve_rate * BEARSHARES_VOTE_REGENERATION_SECONDS ) / (60*60*24);
 
          BOOST_REQUIRE( alice.voting_power == old_voting_power - ( ( old_voting_power + max_vote_denom - 1 ) / max_vote_denom ) );
          BOOST_REQUIRE( alice.last_vote_time == db.head_block_time() );
-         BOOST_REQUIRE( alice_comment.net_rshares.value == alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEMIT_100_PERCENT );
-         BOOST_REQUIRE( alice_comment.cashout_time == alice_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
-         BOOST_REQUIRE( itr->rshares == alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEMIT_100_PERCENT );
+         BOOST_REQUIRE( alice_comment.net_rshares.value == alice.coining_shares.amount.value * ( old_voting_power - alice.voting_power ) / BEARSHARES_100_PERCENT );
+         BOOST_REQUIRE( alice_comment.cashout_time == alice_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
+         BOOST_REQUIRE( itr->rshares == alice.coining_shares.amount.value * ( old_voting_power - alice.voting_power ) / BEARSHARES_100_PERCENT );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test reduced power for quick voting" );
 
-         generate_blocks( db.head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC );
+         generate_blocks( db.head_block_time() + BEARSHARES_MIN_VOTE_INTERVAL_SEC );
 
          old_voting_power = db.get_account( "alice" ).voting_power;
 
@@ -827,7 +827,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.sign( bob_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
 
-         op.weight = STEEMIT_100_PERCENT / 2;
+         op.weight = BEARSHARES_100_PERCENT / 2;
          op.voter = "alice";
          op.author = "bob";
          op.permlink = "foo";
@@ -840,9 +840,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          const auto& bob_comment = db.get_comment( "bob", string( "foo" ) );
          itr = vote_idx.find( std::make_tuple( bob_comment.id, alice.id ) );
 
-         BOOST_REQUIRE( db.get_account( "alice" ).voting_power == old_voting_power - ( ( old_voting_power + max_vote_denom - 1 ) * STEEMIT_100_PERCENT / ( 2 * max_vote_denom * STEEMIT_100_PERCENT ) ) );
-         BOOST_REQUIRE( bob_comment.net_rshares.value == alice.vesting_shares.amount.value * ( old_voting_power - db.get_account( "alice" ).voting_power ) / STEEMIT_100_PERCENT );
-         BOOST_REQUIRE( bob_comment.cashout_time == bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+         BOOST_REQUIRE( db.get_account( "alice" ).voting_power == old_voting_power - ( ( old_voting_power + max_vote_denom - 1 ) * BEARSHARES_100_PERCENT / ( 2 * max_vote_denom * BEARSHARES_100_PERCENT ) ) );
+         BOOST_REQUIRE( bob_comment.net_rshares.value == alice.coining_shares.amount.value * ( old_voting_power - db.get_account( "alice" ).voting_power ) / BEARSHARES_100_PERCENT );
+         BOOST_REQUIRE( bob_comment.cashout_time == bob_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
@@ -851,28 +851,28 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          old_voting_power = db.get_account( "bob" ).voting_power;
          auto old_abs_rshares = db.get_comment( "alice", string( "foo" ) ).abs_rshares.value;
 
-         generate_blocks( db.head_block_time() + fc::seconds( ( STEEMIT_CASHOUT_WINDOW_SECONDS / 2 ) ), true );
+         generate_blocks( db.head_block_time() + fc::seconds( ( BEARSHARES_CASHOUT_WINDOW_SECONDS / 2 ) ), true );
 
          const auto& new_bob = db.get_account( "bob" );
          const auto& new_alice_comment = db.get_comment( "alice", string( "foo" ) );
 
-         op.weight = STEEMIT_100_PERCENT;
+         op.weight = BEARSHARES_100_PERCENT;
          op.voter = "bob";
          op.author = "alice";
          op.permlink = "foo";
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
          tx.sign( bob_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
 
          itr = vote_idx.find( std::make_tuple( new_alice_comment.id, new_bob.id ) );
-         uint128_t new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+         uint128_t new_cashout_time = db.head_block_time().sec_since_epoch() + BEARSHARES_CASHOUT_WINDOW_SECONDS;
 
-         BOOST_REQUIRE( new_bob.voting_power == STEEMIT_100_PERCENT - ( ( STEEMIT_100_PERCENT + max_vote_denom - 1 ) / max_vote_denom ) );
-         BOOST_REQUIRE( new_alice_comment.net_rshares.value == old_abs_rshares + new_bob.vesting_shares.amount.value * ( old_voting_power - new_bob.voting_power ) / STEEMIT_100_PERCENT );
-         BOOST_REQUIRE( new_alice_comment.cashout_time == new_alice_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+         BOOST_REQUIRE( new_bob.voting_power == BEARSHARES_100_PERCENT - ( ( BEARSHARES_100_PERCENT + max_vote_denom - 1 ) / max_vote_denom ) );
+         BOOST_REQUIRE( new_alice_comment.net_rshares.value == old_abs_rshares + new_bob.coining_shares.amount.value * ( old_voting_power - new_bob.voting_power ) / BEARSHARES_100_PERCENT );
+         BOOST_REQUIRE( new_alice_comment.cashout_time == new_alice_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
@@ -883,7 +883,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          old_abs_rshares = new_bob_comment.abs_rshares.value;
 
-         op.weight = -1 * STEEMIT_100_PERCENT / 2;
+         op.weight = -1 * BEARSHARES_100_PERCENT / 2;
          op.voter = "sam";
          op.author = "bob";
          op.permlink = "foo";
@@ -894,21 +894,21 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db.push_transaction( tx, 0 );
 
          itr = vote_idx.find( std::make_tuple( new_bob_comment.id, new_sam.id ) );
-         new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-         auto sam_weight /*= ( ( uint128_t( new_sam.vesting_shares.amount.value ) ) / 400 + 1 ).to_uint64();*/
-                         = ( ( uint128_t( new_sam.vesting_shares.amount.value ) * ( ( STEEMIT_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) ) / STEEMIT_100_PERCENT ).to_uint64();
+         new_cashout_time = db.head_block_time().sec_since_epoch() + BEARSHARES_CASHOUT_WINDOW_SECONDS;
+         auto sam_weight /*= ( ( uint128_t( new_sam.coining_shares.amount.value ) ) / 400 + 1 ).to_uint64();*/
+                         = ( ( uint128_t( new_sam.coining_shares.amount.value ) * ( ( BEARSHARES_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) ) / BEARSHARES_100_PERCENT ).to_uint64();
 
-         BOOST_REQUIRE( new_sam.voting_power == STEEMIT_100_PERCENT - ( ( STEEMIT_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) );
+         BOOST_REQUIRE( new_sam.voting_power == BEARSHARES_100_PERCENT - ( ( BEARSHARES_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) );
          BOOST_REQUIRE( new_bob_comment.net_rshares.value == old_abs_rshares - sam_weight );
          BOOST_REQUIRE( new_bob_comment.abs_rshares.value == old_abs_rshares + sam_weight );
-         BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test nested voting on nested comments" );
 
          old_abs_rshares = new_alice_comment.children_abs_rshares.value;
-         int64_t regenerated_power = (STEEMIT_100_PERCENT * ( db.head_block_time() - db.get_account( "alice").last_vote_time ).to_seconds() ) / STEEMIT_VOTE_REGENERATION_SECONDS;
+         int64_t regenerated_power = (BEARSHARES_100_PERCENT * ( db.head_block_time() - db.get_account( "alice").last_vote_time ).to_seconds() ) / BEARSHARES_VOTE_REGENERATION_SECONDS;
          int64_t used_power = ( db.get_account( "alice" ).voting_power + regenerated_power + max_vote_denom - 1 ) / max_vote_denom;
 
          comment_op.author = "sam";
@@ -923,7 +923,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.sign( sam_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
 
-         op.weight = STEEMIT_100_PERCENT;
+         op.weight = BEARSHARES_100_PERCENT;
          op.voter = "alice";
          op.author = "sam";
          op.permlink = "foo";
@@ -933,26 +933,26 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.sign( alice_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
 
-         auto new_rshares = ( ( fc::uint128_t( db.get_account( "alice" ).vesting_shares.amount.value ) * used_power ) / STEEMIT_100_PERCENT ).to_uint64();
+         auto new_rshares = ( ( fc::uint128_t( db.get_account( "alice" ).coining_shares.amount.value ) * used_power ) / BEARSHARES_100_PERCENT ).to_uint64();
 
-         BOOST_REQUIRE( db.get_comment( "alice", string( "foo" ) ).cashout_time == db.get_comment( "alice", string( "foo" ) ).created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+         BOOST_REQUIRE( db.get_comment( "alice", string( "foo" ) ).cashout_time == db.get_comment( "alice", string( "foo" ) ).created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
 
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test increasing vote rshares" );
 
-         generate_blocks( db.head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC );
+         generate_blocks( db.head_block_time() + BEARSHARES_MIN_VOTE_INTERVAL_SEC );
 
          auto new_alice = db.get_account( "alice" );
          auto alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
          auto old_vote_rshares = alice_bob_vote->rshares;
          auto old_net_rshares = new_bob_comment.net_rshares.value;
          old_abs_rshares = new_bob_comment.abs_rshares.value;
-         used_power = ( ( STEEMIT_1_PERCENT * 25 * ( new_alice.voting_power ) / STEEMIT_100_PERCENT ) + max_vote_denom - 1 ) / max_vote_denom;
+         used_power = ( ( BEARSHARES_1_PERCENT * 25 * ( new_alice.voting_power ) / BEARSHARES_100_PERCENT ) + max_vote_denom - 1 ) / max_vote_denom;
          auto alice_voting_power = new_alice.voting_power - used_power;
 
          op.voter = "alice";
-         op.weight = STEEMIT_1_PERCENT * 25;
+         op.weight = BEARSHARES_1_PERCENT * 25;
          op.author = "bob";
          op.permlink = "foo";
          tx.operations.clear();
@@ -962,11 +962,11 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db.push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
-         new_rshares = ( ( fc::uint128_t( new_alice.vesting_shares.amount.value ) * used_power ) / STEEMIT_100_PERCENT ).to_uint64();
+         new_rshares = ( ( fc::uint128_t( new_alice.coining_shares.amount.value ) * used_power ) / BEARSHARES_100_PERCENT ).to_uint64();
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
-         BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( alice_bob_vote->rshares == new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
@@ -975,16 +975,16 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test decreasing vote rshares" );
 
-         generate_blocks( db.head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC );
+         generate_blocks( db.head_block_time() + BEARSHARES_MIN_VOTE_INTERVAL_SEC );
 
          old_vote_rshares = new_rshares;
          old_net_rshares = new_bob_comment.net_rshares.value;
          old_abs_rshares = new_bob_comment.abs_rshares.value;
-         used_power = ( uint64_t( STEEMIT_1_PERCENT ) * 75 * uint64_t( alice_voting_power ) ) / STEEMIT_100_PERCENT;
+         used_power = ( uint64_t( BEARSHARES_1_PERCENT ) * 75 * uint64_t( alice_voting_power ) ) / BEARSHARES_100_PERCENT;
          used_power = ( used_power + max_vote_denom - 1 ) / max_vote_denom;
          alice_voting_power -= used_power;
 
-         op.weight = STEEMIT_1_PERCENT * -75;
+         op.weight = BEARSHARES_1_PERCENT * -75;
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
@@ -992,11 +992,11 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db.push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
-         new_rshares = ( ( fc::uint128_t( new_alice.vesting_shares.amount.value ) * used_power ) / STEEMIT_100_PERCENT ).to_uint64();
+         new_rshares = ( ( fc::uint128_t( new_alice.coining_shares.amount.value ) * used_power ) / BEARSHARES_100_PERCENT ).to_uint64();
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares - new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
-         BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( alice_bob_vote->rshares == -1 * new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
@@ -1005,7 +1005,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test changing a vote to 0 weight (aka: removing a vote)" );
 
-         generate_blocks( db.head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC );
+         generate_blocks( db.head_block_time() + BEARSHARES_MIN_VOTE_INTERVAL_SEC );
 
          old_vote_rshares = alice_bob_vote->rshares;
          old_net_rshares = new_bob_comment.net_rshares.value;
@@ -1021,7 +1021,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares );
-         BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + BEARSHARES_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( alice_bob_vote->rshares == 0 );
          BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
@@ -1030,20 +1030,20 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test failure when increasing rshares within lockout period" );
 
-         generate_blocks( fc::time_point_sec( ( new_bob_comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT_HF17 ).sec_since_epoch() + STEEMIT_BLOCK_INTERVAL ), true );
+         generate_blocks( fc::time_point_sec( ( new_bob_comment.cashout_time - BEARSHARES_UPVOTE_LOCKOUT_HF17 ).sec_since_epoch() + BEARSHARES_BLOCK_INTERVAL ), true );
 
-         op.weight = STEEMIT_100_PERCENT;
+         op.weight = BEARSHARES_100_PERCENT;
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
          tx.sign( alice_private_key, db.get_chain_id() );
 
-         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+         BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test success when reducing rshares within lockout period" );
 
-         op.weight = -1 * STEEMIT_100_PERCENT;
+         op.weight = -1 * BEARSHARES_100_PERCENT;
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
@@ -1053,13 +1053,13 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test failure with a new vote within lockout period" );
 
-         op.weight = STEEMIT_100_PERCENT;
+         op.weight = BEARSHARES_100_PERCENT;
          op.voter = "dave";
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
          tx.sign( dave_private_key, db.get_chain_id() );
-         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+         BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
          validate_database();
       }
    }
@@ -1092,27 +1092,27 @@ BOOST_AUTO_TEST_CASE( transfer_authorities )
       op.amount = ASSET( "2.500 TESTS" );
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
       tx.signatures.clear();
@@ -1140,7 +1140,7 @@ BOOST_AUTO_TEST_CASE( signature_stripping )
       update_op.active = authority( 2, "alice", 1, "bob", 1, "sam", 1 );
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( update_op );
 
       tx.sign( corp_private_key, db.get_chain_id() );
@@ -1158,12 +1158,12 @@ BOOST_AUTO_TEST_CASE( signature_stripping )
 
       tx.sign( alice_private_key, db.get_chain_id() );
       signature_type alice_sig = tx.signatures.back();
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
       tx.sign( bob_private_key, db.get_chain_id() );
       signature_type bob_sig = tx.signatures.back();
       tx.sign( sam_private_key, db.get_chain_id() );
       signature_type sam_sig = tx.signatures.back();
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       tx.signatures.clear();
       tx.signatures.push_back( alice_sig );
@@ -1173,7 +1173,7 @@ BOOST_AUTO_TEST_CASE( signature_stripping )
       tx.signatures.clear();
       tx.signatures.push_back( alice_sig );
       tx.signatures.push_back( sam_sig );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -1199,7 +1199,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
 
       BOOST_TEST_MESSAGE( "--- Test normal transaction" );
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -1221,7 +1221,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       tx.signatures.clear();
       tx.operations.clear();
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, database::skip_transaction_dupe_check );
 
@@ -1233,9 +1233,9 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       tx.signatures.clear();
       tx.operations.clear();
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( new_alice.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "10.000 TESTS" ).amount.value );
@@ -1245,53 +1245,53 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( transfer_to_vesting_validate )
+BOOST_AUTO_TEST_CASE( transfer_to_coining_validate )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Testing: transfer_to_vesting_validate" );
+      BOOST_TEST_MESSAGE( "Testing: transfer_to_coining_validate" );
 
       validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( transfer_to_vesting_authorities )
+BOOST_AUTO_TEST_CASE( transfer_to_coining_authorities )
 {
    try
    {
       ACTORS( (alice)(bob) )
       fund( "alice", 10000 );
 
-      BOOST_TEST_MESSAGE( "Testing: transfer_to_vesting_authorities" );
+      BOOST_TEST_MESSAGE( "Testing: transfer_to_coining_authorities" );
 
-      transfer_to_vesting_operation op;
+      transfer_to_coining_operation op;
       op.from = "alice";
       op.to = "bob";
       op.amount = ASSET( "2.500 TESTS" );
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with from signature" );
       tx.signatures.clear();
@@ -1303,11 +1303,11 @@ BOOST_AUTO_TEST_CASE( transfer_to_vesting_authorities )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( transfer_to_vesting_apply )
+BOOST_AUTO_TEST_CASE( transfer_to_coining_apply )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Testing: transfer_to_vesting_apply" );
+      BOOST_TEST_MESSAGE( "Testing: transfer_to_coining_apply" );
 
       ACTORS( (alice)(bob) )
       fund( "alice", 10000 );
@@ -1316,99 +1316,99 @@ BOOST_AUTO_TEST_CASE( transfer_to_vesting_apply )
 
       BOOST_REQUIRE( alice.balance == ASSET( "10.000 TESTS" ) );
 
-      auto shares = asset( gpo.total_vesting_shares.amount, VESTS_SYMBOL );
-      auto vests = asset( gpo.total_vesting_fund_steem.amount, STEEM_SYMBOL );
-      auto alice_shares = alice.vesting_shares;
-      auto bob_shares = bob.vesting_shares;
+      auto shares = asset( gpo.total_coining_shares.amount, COINS_SYMBOL );
+      auto coins = asset( gpo.total_coining_fund_bears.amount, BEARS_SYMBOL );
+      auto alice_shares = alice.coining_shares;
+      auto bob_shares = bob.coining_shares;
 
-      transfer_to_vesting_operation op;
+      transfer_to_coining_operation op;
       op.from = "alice";
       op.to = "";
       op.amount = ASSET( "7.500 TESTS" );
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      auto new_vest = op.amount * ( shares / vests );
-      shares += new_vest;
-      vests += op.amount;
-      alice_shares += new_vest;
+      auto new_coin = op.amount * ( shares / coins );
+      shares += new_coin;
+      coins += op.amount;
+      alice_shares += new_coin;
 
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "2.500 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.vesting_shares.amount.value == alice_shares.amount.value );
-      BOOST_REQUIRE( gpo.total_vesting_fund_steem.amount.value == vests.amount.value );
-      BOOST_REQUIRE( gpo.total_vesting_shares.amount.value == shares.amount.value );
+      BOOST_REQUIRE( alice.coining_shares.amount.value == alice_shares.amount.value );
+      BOOST_REQUIRE( gpo.total_coining_fund_bears.amount.value == coins.amount.value );
+      BOOST_REQUIRE( gpo.total_coining_shares.amount.value == shares.amount.value );
       validate_database();
 
       op.to = "bob";
-      op.amount = asset( 2000, STEEM_SYMBOL );
+      op.amount = asset( 2000, BEARS_SYMBOL );
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      new_vest = asset( ( op.amount * ( shares / vests ) ).amount, VESTS_SYMBOL );
-      shares += new_vest;
-      vests += op.amount;
-      bob_shares += new_vest;
+      new_coin = asset( ( op.amount * ( shares / coins ) ).amount, COINS_SYMBOL );
+      shares += new_coin;
+      coins += op.amount;
+      bob_shares += new_coin;
 
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "0.500 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.vesting_shares.amount.value == alice_shares.amount.value );
+      BOOST_REQUIRE( alice.coining_shares.amount.value == alice_shares.amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.vesting_shares.amount.value == bob_shares.amount.value );
-      BOOST_REQUIRE( gpo.total_vesting_fund_steem.amount.value == vests.amount.value );
-      BOOST_REQUIRE( gpo.total_vesting_shares.amount.value == shares.amount.value );
+      BOOST_REQUIRE( bob.coining_shares.amount.value == bob_shares.amount.value );
+      BOOST_REQUIRE( gpo.total_coining_fund_bears.amount.value == coins.amount.value );
+      BOOST_REQUIRE( gpo.total_coining_shares.amount.value == shares.amount.value );
       validate_database();
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "0.500 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.vesting_shares.amount.value == alice_shares.amount.value );
+      BOOST_REQUIRE( alice.coining_shares.amount.value == alice_shares.amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.vesting_shares.amount.value == bob_shares.amount.value );
-      BOOST_REQUIRE( gpo.total_vesting_fund_steem.amount.value == vests.amount.value );
-      BOOST_REQUIRE( gpo.total_vesting_shares.amount.value == shares.amount.value );
+      BOOST_REQUIRE( bob.coining_shares.amount.value == bob_shares.amount.value );
+      BOOST_REQUIRE( gpo.total_coining_fund_bears.amount.value == coins.amount.value );
+      BOOST_REQUIRE( gpo.total_coining_shares.amount.value == shares.amount.value );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( withdraw_vesting_validate )
+BOOST_AUTO_TEST_CASE( withdraw_coining_validate )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Testing: withdraw_vesting_validate" );
+      BOOST_TEST_MESSAGE( "Testing: withdraw_coining_validate" );
 
       validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( withdraw_vesting_authorities )
+BOOST_AUTO_TEST_CASE( withdraw_coining_authorities )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Testing: withdraw_vesting_authorities" );
+      BOOST_TEST_MESSAGE( "Testing: withdraw_coining_authorities" );
 
       ACTORS( (alice)(bob) )
       fund( "alice", 10000 );
-      vest( "alice", 10000 );
+      coin( "alice", 10000 );
 
-      withdraw_vesting_operation op;
+      withdraw_coining_operation op;
       op.account = "alice";
-      op.vesting_shares = ASSET( "0.001000 VESTS" );
+      op.coining_shares = ASSET( "0.001000 COINS" );
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signature." );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
@@ -1416,117 +1416,117 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_authorities )
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
+BOOST_AUTO_TEST_CASE( withdraw_coining_apply )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Testing: withdraw_vesting_apply" );
+      BOOST_TEST_MESSAGE( "Testing: withdraw_coining_apply" );
 
       ACTORS( (alice) )
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
+      coin( "alice", ASSET( "10.000 TESTS" ) );
 
-      BOOST_TEST_MESSAGE( "--- Test failure withdrawing negative VESTS" );
+      BOOST_TEST_MESSAGE( "--- Test failure withdrawing negative COINS" );
 
       {
       const auto& alice = db.get_account( "alice" );
 
-      withdraw_vesting_operation op;
+      withdraw_coining_operation op;
       op.account = "alice";
-      op.vesting_shares = asset( -1, VESTS_SYMBOL );
+      op.coining_shares = asset( -1, COINS_SYMBOL );
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
 
-      BOOST_TEST_MESSAGE( "--- Test withdraw of existing VESTS" );
-      op.vesting_shares = asset( alice.vesting_shares.amount / 2, VESTS_SYMBOL );
+      BOOST_TEST_MESSAGE( "--- Test withdraw of existing COINS" );
+      op.coining_shares = asset( alice.coining_shares.amount / 2, COINS_SYMBOL );
 
-      auto old_vesting_shares = alice.vesting_shares;
+      auto old_coining_shares = alice.coining_shares;
 
       tx.clear();
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEMIT_VESTING_WITHDRAW_INTERVALS * 2 ) ).value );
-      BOOST_REQUIRE( alice.to_withdraw.value == op.vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.next_vesting_withdrawal == db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+      BOOST_REQUIRE( alice.coining_shares.amount.value == old_coining_shares.amount.value );
+      BOOST_REQUIRE( alice.coining_withdraw_rate.amount.value == ( old_coining_shares.amount / ( BEARSHARES_COINING_WITHDRAW_INTERVALS * 2 ) ).value );
+      BOOST_REQUIRE( alice.to_withdraw.value == op.coining_shares.amount.value );
+      BOOST_REQUIRE( alice.next_coining_withdrawal == db.head_block_time() + BEARSHARES_COINING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
 
-      BOOST_TEST_MESSAGE( "--- Test changing vesting withdrawal" );
+      BOOST_TEST_MESSAGE( "--- Test changing coining withdrawal" );
       tx.operations.clear();
       tx.signatures.clear();
 
-      op.vesting_shares = asset( alice.vesting_shares.amount / 3, VESTS_SYMBOL );
+      op.coining_shares = asset( alice.coining_shares.amount / 3, COINS_SYMBOL );
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEMIT_VESTING_WITHDRAW_INTERVALS * 3 ) ).value );
-      BOOST_REQUIRE( alice.to_withdraw.value == op.vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.next_vesting_withdrawal == db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+      BOOST_REQUIRE( alice.coining_shares.amount.value == old_coining_shares.amount.value );
+      BOOST_REQUIRE( alice.coining_withdraw_rate.amount.value == ( old_coining_shares.amount / ( BEARSHARES_COINING_WITHDRAW_INTERVALS * 3 ) ).value );
+      BOOST_REQUIRE( alice.to_withdraw.value == op.coining_shares.amount.value );
+      BOOST_REQUIRE( alice.next_coining_withdrawal == db.head_block_time() + BEARSHARES_COINING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
 
-      BOOST_TEST_MESSAGE( "--- Test withdrawing more vests than available" );
+      BOOST_TEST_MESSAGE( "--- Test withdrawing more coins than available" );
       auto old_withdraw_amount = alice.to_withdraw;
       tx.operations.clear();
       tx.signatures.clear();
 
-      op.vesting_shares = asset( alice.vesting_shares.amount * 2, VESTS_SYMBOL );
+      op.coining_shares = asset( alice.coining_shares.amount * 2, COINS_SYMBOL );
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
-      BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEMIT_VESTING_WITHDRAW_INTERVALS * 3 ) ).value );
-      BOOST_REQUIRE( alice.next_vesting_withdrawal == db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+      BOOST_REQUIRE( alice.coining_shares.amount.value == old_coining_shares.amount.value );
+      BOOST_REQUIRE( alice.coining_withdraw_rate.amount.value == ( old_coining_shares.amount / ( BEARSHARES_COINING_WITHDRAW_INTERVALS * 3 ) ).value );
+      BOOST_REQUIRE( alice.next_coining_withdrawal == db.head_block_time() + BEARSHARES_COINING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
 
-      BOOST_TEST_MESSAGE( "--- Test withdrawing 0 to reset vesting withdraw" );
+      BOOST_TEST_MESSAGE( "--- Test withdrawing 0 to reset coining withdraw" );
       tx.operations.clear();
       tx.signatures.clear();
 
-      op.vesting_shares = asset( 0, VESTS_SYMBOL );
+      op.coining_shares = asset( 0, COINS_SYMBOL );
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == 0 );
+      BOOST_REQUIRE( alice.coining_shares.amount.value == old_coining_shares.amount.value );
+      BOOST_REQUIRE( alice.coining_withdraw_rate.amount.value == 0 );
       BOOST_REQUIRE( alice.to_withdraw.value == 0 );
-      BOOST_REQUIRE( alice.next_vesting_withdrawal == fc::time_point_sec::maximum() );
+      BOOST_REQUIRE( alice.next_coining_withdrawal == fc::time_point_sec::maximum() );
 
 
       BOOST_TEST_MESSAGE( "--- Test cancelling a withdraw when below the account creation fee" );
-      op.vesting_shares = alice.vesting_shares;
+      op.coining_shares = alice.coining_shares;
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
@@ -1545,23 +1545,23 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
 
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_supply += wso.median_props.account_creation_fee - ASSET( "0.001 TESTS" ) - gpo.total_vesting_fund_steem;
-            gpo.total_vesting_fund_steem = wso.median_props.account_creation_fee - ASSET( "0.001 TESTS" );
+            gpo.current_supply += wso.median_props.account_creation_fee - ASSET( "0.001 TESTS" ) - gpo.total_coining_fund_bears;
+            gpo.total_coining_fund_bears = wso.median_props.account_creation_fee - ASSET( "0.001 TESTS" );
          });
 
          db.update_virtual_supply();
       }, database::skip_witness_signature );
 
-      withdraw_vesting_operation op;
+      withdraw_coining_operation op;
       signed_transaction tx;
       op.account = "alice";
-      op.vesting_shares = ASSET( "0.000000 VESTS" );
+      op.coining_shares = ASSET( "0.000000 COINS" );
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).vesting_withdraw_rate == ASSET( "0.000000 VESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).coining_withdraw_rate == ASSET( "0.000000 COINS" ) );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1596,27 +1596,27 @@ BOOST_AUTO_TEST_CASE( witness_update_authorities )
       op.block_signing_key = signing_key.get_public_key();
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
       tx.signatures.clear();
@@ -1625,7 +1625,7 @@ BOOST_AUTO_TEST_CASE( witness_update_authorities )
 
       tx.signatures.clear();
       tx.sign( signing_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1649,11 +1649,11 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       op.url = "foo.bar";
       op.fee = ASSET( "1.000 TESTS" );
       op.block_signing_key = signing_key.get_public_key();
-      op.props.account_creation_fee = asset( STEEMIT_MIN_ACCOUNT_CREATION_FEE + 10, STEEM_SYMBOL);
-      op.props.maximum_block_size = STEEMIT_MIN_BLOCK_SIZE_LIMIT + 100;
+      op.props.account_creation_fee = asset( BEARSHARES_MIN_ACCOUNT_CREATION_FEE + 10, BEARS_SYMBOL);
+      op.props.maximum_block_size = BEARSHARES_MIN_BLOCK_SIZE_LIMIT + 100;
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
 
@@ -1712,7 +1712,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       op.owner = "bob";
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1746,27 +1746,27 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_authorities )
       op.witness = "alice";
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
       tx.sign( bob_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
       tx.sign( bob_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
       tx.sign( bob_private_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
       tx.signatures.clear();
@@ -1777,7 +1777,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_authorities )
       proxy( "bob", "sam" );
       tx.signatures.clear();
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
    }
@@ -1792,7 +1792,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
 
       ACTORS( (alice)(bob)(sam) )
       fund( "alice" , 5000 );
-      vest( "alice", 5000 );
+      coin( "alice", 5000 );
       fund( "sam", 1000 );
 
       private_key_type sam_witness_key = generate_private_key( "sam_key" );
@@ -1808,13 +1808,13 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       op.approve = true;
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
 
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( sam_witness.votes == alice.vesting_shares.amount );
+      BOOST_REQUIRE( sam_witness.votes == alice.coining_shares.amount );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, alice.id ) ) != witness_vote_idx.end() );
       validate_database();
 
@@ -1831,7 +1831,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
 
       BOOST_TEST_MESSAGE( "--- Test failure when attempting to revoke a non-existent vote" );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
       BOOST_REQUIRE( sam_witness.votes.value == 0 );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, alice.id ) ) == witness_vote_idx.end() );
 
@@ -1846,7 +1846,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
 
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.vesting_shares.amount ) );
+      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.coining_shares.amount ) );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, bob.id ) ) != witness_vote_idx.end() );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, alice.id ) ) == witness_vote_idx.end() );
 
@@ -1856,9 +1856,9 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       op.account = "alice";
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
-      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.vesting_shares.amount ) );
+      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.coining_shares.amount ) );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, bob.id ) ) != witness_vote_idx.end() );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, alice.id ) ) == witness_vote_idx.end() );
 
@@ -1884,7 +1884,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when voting for an account that is not a witness" );
@@ -1894,7 +1894,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1924,27 +1924,27 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_authorities )
       op.proxy = "alice";
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
       tx.sign( bob_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
       tx.sign( bob_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
       tx.sign( bob_private_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
       tx.signatures.clear();
@@ -1954,7 +1954,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_authorities )
       BOOST_TEST_MESSAGE( "--- Test failure with proxy signature" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
    }
@@ -1969,13 +1969,13 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
 
       ACTORS( (alice)(bob)(sam)(dave) )
       fund( "alice", 1000 );
-      vest( "alice", 1000 );
+      coin( "alice", 1000 );
       fund( "bob", 3000 );
-      vest( "bob", 3000 );
+      coin( "bob", 3000 );
       fund( "sam", 5000 );
-      vest( "sam", 5000 );
+      coin( "sam", 5000 );
       fund( "dave", 7000 );
-      vest( "dave", 7000 );
+      coin( "dave", 7000 );
 
       BOOST_TEST_MESSAGE( "--- Test setting proxy to another account from self." );
       // bob -> alice
@@ -1986,15 +1986,15 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
 
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( bob.proxy == "alice" );
       BOOST_REQUIRE( bob.proxied_vsf_votes_total().value == 0 );
-      BOOST_REQUIRE( alice.proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( alice.proxied_vsf_votes_total() == bob.vesting_shares.amount );
+      BOOST_REQUIRE( alice.proxy == BEARSHARES_PROXY_TO_SELF_ACCOUNT );
+      BOOST_REQUIRE( alice.proxied_vsf_votes_total() == bob.coining_shares.amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test changing proxy" );
@@ -2011,18 +2011,18 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       BOOST_REQUIRE( bob.proxy == "sam" );
       BOOST_REQUIRE( bob.proxied_vsf_votes_total().value == 0 );
       BOOST_REQUIRE( alice.proxied_vsf_votes_total().value == 0 );
-      BOOST_REQUIRE( sam.proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( sam.proxied_vsf_votes_total().value == bob.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxy == BEARSHARES_PROXY_TO_SELF_ACCOUNT );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total().value == bob.coining_shares.amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when changing proxy to existing proxy" );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( bob.proxy == "sam" );
       BOOST_REQUIRE( bob.proxied_vsf_votes_total().value == 0 );
-      BOOST_REQUIRE( sam.proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == bob.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxy == BEARSHARES_PROXY_TO_SELF_ACCOUNT );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == bob.coining_shares.amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test adding a grandparent proxy" );
@@ -2040,9 +2040,9 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       BOOST_REQUIRE( bob.proxy == "sam" );
       BOOST_REQUIRE( bob.proxied_vsf_votes_total().value == 0 );
       BOOST_REQUIRE( sam.proxy == "dave" );
-      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == bob.vesting_shares.amount );
-      BOOST_REQUIRE( dave.proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.vesting_shares + bob.vesting_shares ).amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == bob.coining_shares.amount );
+      BOOST_REQUIRE( dave.proxy == BEARSHARES_PROXY_TO_SELF_ACCOUNT );
+      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.coining_shares + bob.coining_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test adding a grandchild proxy" );
@@ -2063,9 +2063,9 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       BOOST_REQUIRE( bob.proxy == "sam" );
       BOOST_REQUIRE( bob.proxied_vsf_votes_total().value == 0 );
       BOOST_REQUIRE( sam.proxy == "dave" );
-      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == ( bob.vesting_shares + alice.vesting_shares ).amount );
-      BOOST_REQUIRE( dave.proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.vesting_shares + bob.vesting_shares + alice.vesting_shares ).amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == ( bob.coining_shares + alice.coining_shares ).amount );
+      BOOST_REQUIRE( dave.proxy == BEARSHARES_PROXY_TO_SELF_ACCOUNT );
+      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.coining_shares + bob.coining_shares + alice.coining_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test removing a grandchild proxy" );
@@ -2073,7 +2073,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
 
       tx.operations.clear();
       tx.signatures.clear();
-      op.proxy = STEEMIT_PROXY_TO_SELF_ACCOUNT;
+      op.proxy = BEARSHARES_PROXY_TO_SELF_ACCOUNT;
       op.account = "bob";
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
@@ -2082,18 +2082,18 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
 
       BOOST_REQUIRE( alice.proxy == "sam" );
       BOOST_REQUIRE( alice.proxied_vsf_votes_total().value == 0 );
-      BOOST_REQUIRE( bob.proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT );
+      BOOST_REQUIRE( bob.proxy == BEARSHARES_PROXY_TO_SELF_ACCOUNT );
       BOOST_REQUIRE( bob.proxied_vsf_votes_total().value == 0 );
       BOOST_REQUIRE( sam.proxy == "dave" );
-      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == alice.vesting_shares.amount );
-      BOOST_REQUIRE( dave.proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.vesting_shares + alice.vesting_shares ).amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == alice.coining_shares.amount );
+      BOOST_REQUIRE( dave.proxy == BEARSHARES_PROXY_TO_SELF_ACCOUNT );
+      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.coining_shares + alice.coining_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test votes are transferred when a proxy is added" );
       account_witness_vote_operation vote;
       vote.account= "bob";
-      vote.witness = STEEMIT_INIT_MINER_NAME;
+      vote.witness = BEARSHARES_INIT_MINER_NAME;
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( vote );
@@ -2110,11 +2110,11 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
 
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_witness( STEEMIT_INIT_MINER_NAME ).votes == ( alice.vesting_shares + bob.vesting_shares ).amount );
+      BOOST_REQUIRE( db.get_witness( BEARSHARES_INIT_MINER_NAME ).votes == ( alice.coining_shares + bob.coining_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test votes are removed when a proxy is removed" );
-      op.proxy = STEEMIT_PROXY_TO_SELF_ACCOUNT;
+      op.proxy = BEARSHARES_PROXY_TO_SELF_ACCOUNT;
       tx.signatures.clear();
       tx.operations.clear();
       tx.operations.push_back( op );
@@ -2122,7 +2122,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
 
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_witness( STEEMIT_INIT_MINER_NAME ).votes == bob.vesting_shares.amount );
+      BOOST_REQUIRE( db.get_witness( BEARSHARES_INIT_MINER_NAME ).votes == bob.coining_shares.amount );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -2233,26 +2233,26 @@ BOOST_AUTO_TEST_CASE( feed_publish_authorities )
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signature." );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness account signature" );
       tx.signatures.clear();
@@ -2277,10 +2277,10 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       BOOST_TEST_MESSAGE( "--- Test publishing price feed" );
       feed_publish_operation op;
       op.publisher = "alice";
-      op.exchange_rate = price( ASSET( "1000.000 TESTS" ), ASSET( "1.000 TBD" ) ); // 1000 STEEM : 1 SBD
+      op.exchange_rate = price( ASSET( "1000.000 TESTS" ), ASSET( "1.000 TBD" ) ); // 1000 BEARS : 1 BSD
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
 
@@ -2288,8 +2288,8 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
 
       witness_object& alice_witness = const_cast< witness_object& >( db.get_witness( "alice" ) );
 
-      BOOST_REQUIRE( alice_witness.sbd_exchange_rate == op.exchange_rate );
-      BOOST_REQUIRE( alice_witness.last_sbd_exchange_update == db.head_block_time() );
+      BOOST_REQUIRE( alice_witness.bsd_exchange_rate == op.exchange_rate );
+      BOOST_REQUIRE( alice_witness.last_bsd_exchange_update == db.head_block_time() );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure publishing to non-existent witness" );
@@ -2299,7 +2299,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       op.publisher = "bob";
       tx.sign( alice_private_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test updating price feed" );
@@ -2314,8 +2314,8 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       db.push_transaction( tx, 0 );
 
       alice_witness = const_cast< witness_object& >( db.get_witness( "alice" ) );
-      BOOST_REQUIRE( std::abs( alice_witness.sbd_exchange_rate.to_real() - op.exchange_rate.to_real() ) < 0.0000005 );
-      BOOST_REQUIRE( alice_witness.last_sbd_exchange_update == db.head_block_time() );
+      BOOST_REQUIRE( std::abs( alice_witness.bsd_exchange_rate.to_real() - op.exchange_rate.to_real() ) < 0.0000005 );
+      BOOST_REQUIRE( alice_witness.last_bsd_exchange_update == db.head_block_time() );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -2350,27 +2350,27 @@ BOOST_AUTO_TEST_CASE( convert_authorities )
       op.amount = ASSET( "2.500 TBD" );
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the account's authority" );
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test success with owner signature" );
       tx.signatures.clear();
@@ -2393,7 +2393,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
 
       convert_operation op;
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
 
       const auto& convert_request_idx = db.get_index< convert_request_index >().indices().get< by_owner >();
 
@@ -2410,10 +2410,10 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       op.amount = ASSET( "5.000 TESTS" );
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "3.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( new_bob.sbd_balance.amount.value == ASSET( "7.000 TBD" ).amount.value );
+      BOOST_REQUIRE( new_bob.bsd_balance.amount.value == ASSET( "7.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when account does not have the required TBD" );
@@ -2423,10 +2423,10 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( new_alice.balance.amount.value == ASSET( "7.500 TESTS" ).amount.value );
-      BOOST_REQUIRE( new_alice.sbd_balance.amount.value == ASSET( "2.500 TBD" ).amount.value );
+      BOOST_REQUIRE( new_alice.bsd_balance.amount.value == ASSET( "2.500 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when account does not exist" );
@@ -2435,20 +2435,20 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
-      BOOST_TEST_MESSAGE( "--- Test success converting SBD to TESTS" );
+      BOOST_TEST_MESSAGE( "--- Test success converting BSD to TESTS" );
       op.owner = "bob";
       op.amount = ASSET( "3.000 TBD" );
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "3.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( new_bob.sbd_balance.amount.value == ASSET( "4.000 TBD" ).amount.value );
+      BOOST_REQUIRE( new_bob.bsd_balance.amount.value == ASSET( "4.000 TBD" ).amount.value );
 
       auto convert_request = convert_request_idx.find( std::make_tuple( op.owner, op.requestid ) );
       BOOST_REQUIRE( convert_request != convert_request_idx.end() );
@@ -2456,7 +2456,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       BOOST_REQUIRE( convert_request->requestid == op.requestid );
       BOOST_REQUIRE( convert_request->amount.amount.value == op.amount.amount.value );
       //BOOST_REQUIRE( convert_request->premium == 100000 );
-      BOOST_REQUIRE( convert_request->conversion_date == db.head_block_time() + STEEMIT_CONVERSION_DELAY );
+      BOOST_REQUIRE( convert_request->conversion_date == db.head_block_time() + BEARSHARES_CONVERSION_DELAY );
 
       BOOST_TEST_MESSAGE( "--- Test failure from repeated id" );
       op.amount = ASSET( "2.000 TESTS" );
@@ -2464,10 +2464,10 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "3.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( new_bob.sbd_balance.amount.value == ASSET( "4.000 TBD" ).amount.value );
+      BOOST_REQUIRE( new_bob.bsd_balance.amount.value == ASSET( "4.000 TBD" ).amount.value );
 
       convert_request = convert_request_idx.find( std::make_tuple( op.owner, op.requestid ) );
       BOOST_REQUIRE( convert_request != convert_request_idx.end() );
@@ -2475,7 +2475,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       BOOST_REQUIRE( convert_request->requestid == op.requestid );
       BOOST_REQUIRE( convert_request->amount.amount.value == ASSET( "3.000 TBD" ).amount.value );
       //BOOST_REQUIRE( convert_request->premium == 100000 );
-      BOOST_REQUIRE( convert_request->conversion_date == db.head_block_time() + STEEMIT_CONVERSION_DELAY );
+      BOOST_REQUIRE( convert_request->conversion_date == db.head_block_time() + BEARSHARES_CONVERSION_DELAY );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -2506,10 +2506,10 @@ BOOST_AUTO_TEST_CASE( limit_order_create_authorities )
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signature." );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
@@ -2517,18 +2517,18 @@ BOOST_AUTO_TEST_CASE( limit_order_create_authorities )
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
    }
@@ -2560,13 +2560,13 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       op.min_to_receive = ASSET( "10.000 TBD" );
       op.fill_or_kill = false;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "100.0000 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "100.0000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when amount to receive is 0" );
@@ -2577,11 +2577,11 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "1000.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when amount to sell is 0" );
@@ -2592,11 +2592,11 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "1000.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
@@ -2615,9 +2615,9 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE( limit_order->orderid == op.orderid );
       BOOST_REQUIRE( limit_order->for_sale == op.amount_to_sell.amount );
       BOOST_REQUIRE( limit_order->sell_price == price( op.amount_to_sell / op.min_to_receive ) );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure creating limit order with duplicate id" );
@@ -2627,7 +2627,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
       BOOST_REQUIRE( limit_order != limit_order_idx.end() );
@@ -2635,9 +2635,9 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE( limit_order->orderid == op.orderid );
       BOOST_REQUIRE( limit_order->for_sale == 10000 );
       BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "10.000 TESTS" ), op.min_to_receive ) );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test sucess killing an order that will not be filled" );
@@ -2648,16 +2648,16 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test having a partial match to limit order" );
-      // Alice has order for 15 SBD at a price of 2:3
-      // Fill 5 STEEM for 7.5 SBD
+      // Alice has order for 15 BSD at a price of 2:3
+      // Fill 5 BEARS for 7.5 BSD
 
       op.owner = "bob";
       op.orderid = 1;
@@ -2679,12 +2679,12 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE( limit_order->orderid == op.orderid );
       BOOST_REQUIRE( limit_order->for_sale == 5000 );
       BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "10.000 TESTS" ), ASSET( "15.000 TBD" ) ) );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "7.500 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "7.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "5.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "992.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "992.500 TBD" ).amount.value );
       BOOST_REQUIRE( fill_order_op.open_owner == "alice" );
       BOOST_REQUIRE( fill_order_op.open_orderid == 1 );
       BOOST_REQUIRE( fill_order_op.open_pays.amount.value == ASSET( "5.000 TESTS").amount.value );
@@ -2709,12 +2709,12 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE( limit_order->orderid == 1 );
       BOOST_REQUIRE( limit_order->for_sale.value == 7500 );
       BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "15.000 TBD" ), ASSET( "10.000 TESTS" ) ) );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 1 ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "15.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "15.000 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "10.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "977.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "977.500 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order and new order fully" );
@@ -2732,9 +2732,9 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 3 ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", 1 ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "985.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "22.500 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "22.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "15.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "977.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "977.500 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is better." );
@@ -2766,11 +2766,11 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE( limit_order->orderid == 4 );
       BOOST_REQUIRE( limit_order->for_sale.value == 1000 );
       BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "12.000 TBD" ), ASSET( "10.000 TESTS" ) ) );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "975.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "33.500 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "33.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "25.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "965.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "965.500 TBD" ).amount.value );
       validate_database();
 
       limit_order_cancel_operation can;
@@ -2785,7 +2785,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
 
       auto gpo = db.get_dynamic_global_properties();
-      auto start_sbd = gpo.current_sbd_supply;
+      auto start_bsd = gpo.current_bsd_supply;
 
       op.owner = "alice";
       op.orderid = 5;
@@ -2814,11 +2814,11 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE( limit_order->orderid == 5 );
       BOOST_REQUIRE( limit_order->for_sale.value == 9091 );
       BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "20.000 TESTS" ), ASSET( "22.000 TBD" ) ) );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "955.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "45.500 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "45.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "35.909 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "954.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "954.500 TBD" ).amount.value );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -2840,10 +2840,10 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_authorities )
 
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signature." );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
@@ -2851,18 +2851,18 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_authorities )
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
    }
@@ -2894,13 +2894,13 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) );
       op.fill_or_kill = false;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "100.0000 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "100.0000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when price is 0" );
@@ -2911,11 +2911,11 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "1000.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when amount to sell is 0" );
@@ -2926,11 +2926,11 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "1000.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
@@ -2949,9 +2949,9 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       BOOST_REQUIRE( limit_order->orderid == op.orderid );
       BOOST_REQUIRE( limit_order->for_sale == op.amount_to_sell.amount );
       BOOST_REQUIRE( limit_order->sell_price == op.exchange_rate );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure creating limit order with duplicate id" );
@@ -2961,7 +2961,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
       BOOST_REQUIRE( limit_order != limit_order_idx.end() );
@@ -2969,9 +2969,9 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       BOOST_REQUIRE( limit_order->orderid == op.orderid );
       BOOST_REQUIRE( limit_order->for_sale == 10000 );
       BOOST_REQUIRE( limit_order->sell_price == op.exchange_rate );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test sucess killing an order that will not be filled" );
@@ -2982,16 +2982,16 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test having a partial match to limit order" );
-      // Alice has order for 15 SBD at a price of 2:3
-      // Fill 5 STEEM for 7.5 SBD
+      // Alice has order for 15 BSD at a price of 2:3
+      // Fill 5 BEARS for 7.5 BSD
 
       op.owner = "bob";
       op.orderid = 1;
@@ -3013,12 +3013,12 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       BOOST_REQUIRE( limit_order->orderid == op.orderid );
       BOOST_REQUIRE( limit_order->for_sale == 5000 );
       BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "2.000 TESTS" ), ASSET( "3.000 TBD" ) ) );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "7.500 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "7.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "5.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "992.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "992.500 TBD" ).amount.value );
       BOOST_REQUIRE( fill_order_op.open_owner == "alice" );
       BOOST_REQUIRE( fill_order_op.open_orderid == 1 );
       BOOST_REQUIRE( fill_order_op.open_pays.amount.value == ASSET( "5.000 TESTS").amount.value );
@@ -3043,12 +3043,12 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       BOOST_REQUIRE( limit_order->orderid == 1 );
       BOOST_REQUIRE( limit_order->for_sale.value == 7500 );
       BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "3.000 TBD" ), ASSET( "2.000 TESTS" ) ) );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 1 ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "15.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "15.000 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "10.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "977.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "977.500 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order and new order fully" );
@@ -3066,9 +3066,9 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 3 ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", 1 ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "985.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "22.500 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "22.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "15.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "977.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "977.500 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is better." );
@@ -3100,11 +3100,11 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       BOOST_REQUIRE( limit_order->orderid == 4 );
       BOOST_REQUIRE( limit_order->for_sale.value == 1000 );
       BOOST_REQUIRE( limit_order->sell_price == op.exchange_rate );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "975.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "33.500 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "33.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "25.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "965.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "965.500 TBD" ).amount.value );
       validate_database();
 
       limit_order_cancel_operation can;
@@ -3119,7 +3119,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
 
       auto gpo = db.get_dynamic_global_properties();
-      auto start_sbd = gpo.current_sbd_supply;
+      auto start_bsd = gpo.current_bsd_supply;
 
       op.owner = "alice";
       op.orderid = 5;
@@ -3148,11 +3148,11 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       BOOST_REQUIRE( limit_order->orderid == 5 );
       BOOST_REQUIRE( limit_order->for_sale.value == 9091 );
       BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "1.000 TESTS" ), ASSET( "1.100 TBD" ) ) );
-      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( BSD_SYMBOL, BEARS_SYMBOL ) );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "955.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "45.500 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "45.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "35.909 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "954.500 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.bsd_balance.amount.value == ASSET( "954.500 TBD" ).amount.value );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -3184,7 +3184,7 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_authorities )
 
       signed_transaction tx;
       tx.operations.push_back( c );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -3197,7 +3197,7 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_authorities )
       tx.operations.push_back( op );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signature." );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
@@ -3205,18 +3205,18 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_authorities )
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
       tx.sign( alice_post_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
    }
@@ -3242,9 +3242,9 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_apply )
       op.owner = "alice";
       op.orderid = 5;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test cancel order" );
 
@@ -3269,7 +3269,7 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_apply )
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 5 ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "10.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
+      BOOST_REQUIRE( alice.bsd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3314,7 +3314,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       account_create_with_delegation_operation acc_create;
       acc_create.fee = ASSET( "10.000 TESTS" );
-      acc_create.delegation = ASSET( "0.000000 VESTS" );
+      acc_create.delegation = ASSET( "0.000000 COINS" );
       acc_create.creator = "alice";
       acc_create.new_account_name = "bob";
       acc_create.owner = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
@@ -3326,7 +3326,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       signed_transaction tx;
       tx.operations.push_back( acc_create );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -3371,7 +3371,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       BOOST_TEST_MESSAGE( "Recovering bob's account with original owner auth and new secret" );
 
-      generate_blocks( db.head_block_time() + STEEMIT_OWNER_UPDATE_LIMIT );
+      generate_blocks( db.head_block_time() + BEARSHARES_OWNER_UPDATE_LIMIT );
 
       recover_account_operation recover;
       recover.account_to_recover = "bob";
@@ -3404,7 +3404,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       BOOST_TEST_MESSAGE( "Testing failure when bob does not have new authority" );
 
-      generate_blocks( db.head_block_time() + STEEMIT_OWNER_UPDATE_LIMIT + fc::seconds( STEEMIT_BLOCK_INTERVAL ) );
+      generate_blocks( db.head_block_time() + BEARSHARES_OWNER_UPDATE_LIMIT + fc::seconds( BEARSHARES_BLOCK_INTERVAL ) );
 
       recover.new_owner_authority = authority( 1, generate_private_key( "idontknow" ).get_public_key(), 1 );
 
@@ -3414,7 +3414,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.operations.push_back( recover );
       tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
       tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       const auto& owner2 = db.get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner2 == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
 
@@ -3430,7 +3430,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.operations.push_back( recover );
       tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
       tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       const auto& owner3 = db.get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner3 == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
 
@@ -3467,12 +3467,12 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       BOOST_REQUIRE( req_itr->account_to_recover == "bob" );
       BOOST_REQUIRE( req_itr->new_owner_authority == authority( 1, generate_private_key( "expire" ).get_public_key(), 1 ) );
-      BOOST_REQUIRE( req_itr->expires == db.head_block_time() + STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD );
+      BOOST_REQUIRE( req_itr->expires == db.head_block_time() + BEARSHARES_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD );
       auto expires = req_itr->expires;
       ++req_itr;
       BOOST_REQUIRE( req_itr == request_idx.end() );
 
-      generate_blocks( time_point_sec( expires - STEEMIT_BLOCK_INTERVAL ), true );
+      generate_blocks( time_point_sec( expires - BEARSHARES_BLOCK_INTERVAL ), true );
 
       const auto& new_request_idx = db.get_index< account_recovery_request_index >().indices();
       BOOST_REQUIRE( new_request_idx.begin() != new_request_idx.end() );
@@ -3491,7 +3491,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.set_expiration( db.head_block_time() );
       tx.sign( generate_private_key( "expire" ), db.get_chain_id() );
       tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       const auto& owner5 = db.get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner5 == authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 ) );
 
@@ -3503,11 +3503,11 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( acc_update );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( db.head_block_time() + ( STEEMIT_OWNER_AUTH_RECOVERY_PERIOD - STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD ) );
+      generate_blocks( db.head_block_time() + ( BEARSHARES_OWNER_AUTH_RECOVERY_PERIOD - BEARSHARES_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD ) );
       generate_block();
 
       request.new_owner_authority = authority( 1, generate_private_key( "last key" ).get_public_key(), 1 );
@@ -3516,7 +3516,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( request );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -3527,10 +3527,10 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( recover );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
       tx.sign( generate_private_key( "last key" ), db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       const auto& owner6 = db.get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner6 == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
 
@@ -3540,7 +3540,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.signatures.clear();
 
       tx.operations.push_back( recover );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
       tx.sign( generate_private_key( "last key" ), db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -3566,7 +3566,7 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
 
          signed_transaction tx;
          tx.operations.push_back( op );
-         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
          tx.sign( alice_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
       };
@@ -3580,14 +3580,14 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
 
          signed_transaction tx;
          tx.operations.push_back( op );
-         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
          tx.sign( recent_owner_key, db.get_chain_id() );
          // only Alice -> throw
-         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+         BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
          tx.signatures.clear();
          tx.sign( new_owner_key, db.get_chain_id() );
          // only Sam -> throw
-         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+         BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
          tx.sign( recent_owner_key, db.get_chain_id() );
          // Alice+Sam -> OK
          db.push_transaction( tx, 0 );
@@ -3602,7 +3602,7 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
 
          signed_transaction tx;
          tx.operations.push_back( op );
-         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
          tx.sign( recovery_account_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
       };
@@ -3615,31 +3615,31 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
 
          signed_transaction tx;
          tx.operations.push_back( op );
-         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
          tx.sign( old_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
       };
 
       // if either/both users do not exist, we shouldn't allow it
-      STEEMIT_REQUIRE_THROW( change_recovery_account("alice", "nobody"), fc::exception );
-      STEEMIT_REQUIRE_THROW( change_recovery_account("haxer", "sam"   ), fc::exception );
-      STEEMIT_REQUIRE_THROW( change_recovery_account("haxer", "nobody"), fc::exception );
+      BEARSHARES_REQUIRE_THROW( change_recovery_account("alice", "nobody"), fc::exception );
+      BEARSHARES_REQUIRE_THROW( change_recovery_account("haxer", "sam"   ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( change_recovery_account("haxer", "nobody"), fc::exception );
       change_recovery_account("alice", "sam");
 
       fc::ecc::private_key alice_priv1 = fc::ecc::private_key::regenerate( fc::sha256::hash( "alice_k1" ) );
       fc::ecc::private_key alice_priv2 = fc::ecc::private_key::regenerate( fc::sha256::hash( "alice_k2" ) );
       public_key_type alice_pub1 = public_key_type( alice_priv1.get_public_key() );
 
-      generate_blocks( db.head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD - fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+      generate_blocks( db.head_block_time() + BEARSHARES_OWNER_AUTH_RECOVERY_PERIOD - fc::seconds( BEARSHARES_BLOCK_INTERVAL ), true );
       // cannot request account recovery until recovery account is approved
-      STEEMIT_REQUIRE_THROW( request_account_recovery( "sam", sam_private_key, "alice", alice_pub1 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( request_account_recovery( "sam", sam_private_key, "alice", alice_pub1 ), fc::exception );
       generate_blocks(1);
       // cannot finish account recovery until requested
-      STEEMIT_REQUIRE_THROW( recover_account( "alice", alice_priv1, alice_private_key ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( recover_account( "alice", alice_priv1, alice_private_key ), fc::exception );
       // do the request
       request_account_recovery( "sam", sam_private_key, "alice", alice_pub1 );
       // can't recover with the current owner key
-      STEEMIT_REQUIRE_THROW( recover_account( "alice", alice_priv1, alice_private_key ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( recover_account( "alice", alice_priv1, alice_private_key ), fc::exception );
       // unless we change it!
       change_owner( "alice", alice_private_key, public_key_type( alice_priv2.get_public_key() ) );
       recover_account( "alice", alice_priv1, alice_private_key );
@@ -3656,8 +3656,8 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_validate )
       escrow_transfer_operation op;
       op.from = "alice";
       op.to = "bob";
-      op.sbd_amount = ASSET( "1.000 TBD" );
-      op.steem_amount = ASSET( "1.000 TESTS" );
+      op.bsd_amount = ASSET( "1.000 TBD" );
+      op.bears_amount = ASSET( "1.000 TESTS" );
       op.escrow_id = 0;
       op.agent = "sam";
       op.fee = ASSET( "0.100 TESTS" );
@@ -3665,49 +3665,49 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_validate )
       op.ratification_deadline = db.head_block_time() + 100;
       op.escrow_expiration = db.head_block_time() + 200;
 
-      BOOST_TEST_MESSAGE( "--- failure when sbd symbol != SBD" );
-      op.sbd_amount.symbol = STEEM_SYMBOL;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bsd symbol != BSD" );
+      op.bsd_amount.symbol = BEARS_SYMBOL;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when steem symbol != STEEM" );
-      op.sbd_amount.symbol = SBD_SYMBOL;
-      op.steem_amount.symbol = SBD_SYMBOL;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bears symbol != BEARS" );
+      op.bsd_amount.symbol = BSD_SYMBOL;
+      op.bears_amount.symbol = BSD_SYMBOL;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when fee symbol != SBD and fee symbol != STEEM" );
-      op.steem_amount.symbol = STEEM_SYMBOL;
-      op.fee.symbol = VESTS_SYMBOL;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when fee symbol != BSD and fee symbol != BEARS" );
+      op.bears_amount.symbol = BEARS_SYMBOL;
+      op.fee.symbol = COINS_SYMBOL;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when sbd == 0 and steem == 0" );
-      op.fee.symbol = STEEM_SYMBOL;
-      op.sbd_amount.amount = 0;
-      op.steem_amount.amount = 0;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bsd == 0 and bears == 0" );
+      op.fee.symbol = BEARS_SYMBOL;
+      op.bsd_amount.amount = 0;
+      op.bears_amount.amount = 0;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when sbd < 0" );
-      op.sbd_amount.amount = -100;
-      op.steem_amount.amount = 1000;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bsd < 0" );
+      op.bsd_amount.amount = -100;
+      op.bears_amount.amount = 1000;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when steem < 0" );
-      op.sbd_amount.amount = 1000;
-      op.steem_amount.amount = -100;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bears < 0" );
+      op.bsd_amount.amount = 1000;
+      op.bears_amount.amount = -100;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when fee < 0" );
-      op.steem_amount.amount = 1000;
+      op.bears_amount.amount = 1000;
       op.fee.amount = -100;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when ratification deadline == escrow expiration" );
       op.fee.amount = 100;
       op.ratification_deadline = op.escrow_expiration;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when ratification deadline > escrow expiration" );
       op.ratification_deadline = op.escrow_expiration + 100;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- success" );
       op.ratification_deadline = op.escrow_expiration - 100;
@@ -3725,8 +3725,8 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_authorities )
       escrow_transfer_operation op;
       op.from = "alice";
       op.to = "bob";
-      op.sbd_amount = ASSET( "1.000 TBD" );
-      op.steem_amount = ASSET( "1.000 TESTS" );
+      op.bsd_amount = ASSET( "1.000 TBD" );
+      op.bears_amount = ASSET( "1.000 TESTS" );
       op.escrow_id = 0;
       op.agent = "sam";
       op.fee = ASSET( "0.100 TESTS" );
@@ -3763,8 +3763,8 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       escrow_transfer_operation op;
       op.from = "alice";
       op.to = "bob";
-      op.sbd_amount = ASSET( "1.000 TBD" );
-      op.steem_amount = ASSET( "1.000 TESTS" );
+      op.bsd_amount = ASSET( "1.000 TBD" );
+      op.bears_amount = ASSET( "1.000 TESTS" );
       op.escrow_id = 0;
       op.agent = "sam";
       op.fee = ASSET( "0.100 TESTS" );
@@ -3772,30 +3772,30 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       op.ratification_deadline = db.head_block_time() + 100;
       op.escrow_expiration = db.head_block_time() + 200;
 
-      BOOST_TEST_MESSAGE( "--- failure when from cannot cover sbd amount" );
+      BOOST_TEST_MESSAGE( "--- failure when from cannot cover bsd amount" );
       signed_transaction tx;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- falure when from cannot cover amount + fee" );
-      op.sbd_amount.amount = 0;
-      op.steem_amount.amount = 10000;
+      op.bsd_amount.amount = 0;
+      op.bears_amount.amount = 10000;
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when ratification deadline is in the past" );
-      op.steem_amount.amount = 1000;
+      op.bears_amount.amount = 1000;
       op.ratification_deadline = db.head_block_time() - 200;
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when expiration is in the past" );
       op.escrow_expiration = db.head_block_time() - 100;
@@ -3803,7 +3803,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- success" );
       op.ratification_deadline = db.head_block_time() + 100;
@@ -3813,12 +3813,12 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
 
-      auto alice_steem_balance = alice.balance - op.steem_amount - op.fee;
-      auto alice_sbd_balance = alice.sbd_balance - op.sbd_amount;
-      auto bob_steem_balance = bob.balance;
-      auto bob_sbd_balance = bob.sbd_balance;
-      auto sam_steem_balance = sam.balance;
-      auto sam_sbd_balance = sam.sbd_balance;
+      auto alice_bears_balance = alice.balance - op.bears_amount - op.fee;
+      auto alice_bsd_balance = alice.bsd_balance - op.bsd_amount;
+      auto bob_bears_balance = bob.balance;
+      auto bob_bsd_balance = bob.bsd_balance;
+      auto sam_bears_balance = sam.balance;
+      auto sam_bsd_balance = sam.bsd_balance;
 
       db.push_transaction( tx, 0 );
 
@@ -3830,18 +3830,18 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       BOOST_REQUIRE( escrow.agent == op.agent );
       BOOST_REQUIRE( escrow.ratification_deadline == op.ratification_deadline );
       BOOST_REQUIRE( escrow.escrow_expiration == op.escrow_expiration );
-      BOOST_REQUIRE( escrow.sbd_balance == op.sbd_amount );
-      BOOST_REQUIRE( escrow.steem_balance == op.steem_amount );
+      BOOST_REQUIRE( escrow.bsd_balance == op.bsd_amount );
+      BOOST_REQUIRE( escrow.bears_balance == op.bears_amount );
       BOOST_REQUIRE( escrow.pending_fee == op.fee );
       BOOST_REQUIRE( !escrow.to_approved );
       BOOST_REQUIRE( !escrow.agent_approved );
       BOOST_REQUIRE( !escrow.disputed );
-      BOOST_REQUIRE( alice.balance == alice_steem_balance );
-      BOOST_REQUIRE( alice.sbd_balance == alice_sbd_balance );
-      BOOST_REQUIRE( bob.balance == bob_steem_balance );
-      BOOST_REQUIRE( bob.sbd_balance == bob_sbd_balance );
-      BOOST_REQUIRE( sam.balance == sam_steem_balance );
-      BOOST_REQUIRE( sam.sbd_balance == sam_sbd_balance );
+      BOOST_REQUIRE( alice.balance == alice_bears_balance );
+      BOOST_REQUIRE( alice.bsd_balance == alice_bsd_balance );
+      BOOST_REQUIRE( bob.balance == bob_bears_balance );
+      BOOST_REQUIRE( bob.bsd_balance == bob_bsd_balance );
+      BOOST_REQUIRE( sam.balance == sam_bears_balance );
+      BOOST_REQUIRE( sam.bsd_balance == sam_bsd_balance );
 
       validate_database();
    }
@@ -3865,7 +3865,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_validate )
 
       BOOST_TEST_MESSAGE( "--- failure when who is not to or agent" );
       op.who = "dave";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- success when who is to" );
       op.who = op.to;
@@ -3929,7 +3929,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       et_op.from = "alice";
       et_op.to = "bob";
       et_op.agent = "sam";
-      et_op.steem_amount = ASSET( "1.000 TESTS" );
+      et_op.bears_amount = ASSET( "1.000 TESTS" );
       et_op.fee = ASSET( "0.100 TESTS" );
       et_op.json_meta = "";
       et_op.ratification_deadline = db.head_block_time() + 100;
@@ -3937,7 +3937,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       signed_transaction tx;
       tx.operations.push_back( et_op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
       tx.operations.clear();
@@ -3954,7 +3954,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when agent does not match escrow" );
@@ -3966,7 +3966,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success approving to" );
@@ -3985,8 +3985,8 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       BOOST_REQUIRE( escrow.agent == "sam" );
       BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
       BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-      BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+      BOOST_REQUIRE( escrow.bsd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( escrow.bears_balance == ASSET( "1.000 TESTS" ) );
       BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.100 TESTS" ) );
       BOOST_REQUIRE( escrow.to_approved );
       BOOST_REQUIRE( !escrow.agent_approved );
@@ -3996,16 +3996,16 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       BOOST_TEST_MESSAGE( "--- failure on repeat approval" );
       tx.signatures.clear();
 
-      tx.set_expiration( db.head_block_time() + STEEMIT_BLOCK_INTERVAL );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_BLOCK_INTERVAL );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
       BOOST_REQUIRE( escrow.agent == "sam" );
       BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
       BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-      BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+      BOOST_REQUIRE( escrow.bsd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( escrow.bears_balance == ASSET( "1.000 TESTS" ) );
       BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.100 TESTS" ) );
       BOOST_REQUIRE( escrow.to_approved );
       BOOST_REQUIRE( !escrow.agent_approved );
@@ -4020,14 +4020,14 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
       BOOST_REQUIRE( escrow.agent == "sam" );
       BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
       BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-      BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+      BOOST_REQUIRE( escrow.bsd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( escrow.bears_balance == ASSET( "1.000 TESTS" ) );
       BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.100 TESTS" ) );
       BOOST_REQUIRE( escrow.to_approved );
       BOOST_REQUIRE( !escrow.agent_approved );
@@ -4044,7 +4044,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
       BOOST_REQUIRE( alice.balance == ASSET( "10.000 TESTS" ) );
       validate_database();
 
@@ -4056,9 +4056,9 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
+      generate_blocks( et_op.ratification_deadline + BEARSHARES_BLOCK_INTERVAL, true );
 
-      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
       validate_database();
 
@@ -4069,7 +4069,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       et_op.ratification_deadline = db.head_block_time() + 100;
       et_op.escrow_expiration = db.head_block_time() + 200;
       tx.operations.push_back( et_op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -4081,9 +4081,9 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
+      generate_blocks( et_op.ratification_deadline + BEARSHARES_BLOCK_INTERVAL, true );
 
-      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
       validate_database();
 
@@ -4094,7 +4094,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       et_op.ratification_deadline = db.head_block_time() + 100;
       et_op.escrow_expiration = db.head_block_time() + 200;
       tx.operations.push_back( et_op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -4105,9 +4105,9 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
+      generate_blocks( et_op.ratification_deadline + BEARSHARES_BLOCK_INTERVAL, true );
 
-      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
       validate_database();
 
@@ -4118,7 +4118,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       et_op.ratification_deadline = db.head_block_time() + 100;
       et_op.escrow_expiration = db.head_block_time() + 200;
       tx.operations.push_back( et_op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -4142,8 +4142,8 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
          BOOST_REQUIRE( escrow.agent == "sam" );
          BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
          BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-         BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
-         BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+         BOOST_REQUIRE( escrow.bsd_balance == ASSET( "0.000 TBD" ) );
+         BOOST_REQUIRE( escrow.bears_balance == ASSET( "1.000 TESTS" ) );
          BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.000 TESTS" ) );
          BOOST_REQUIRE( escrow.to_approved );
          BOOST_REQUIRE( escrow.agent_approved );
@@ -4156,15 +4156,15 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       BOOST_TEST_MESSAGE( "--- ratification expiration does not remove an approved escrow" );
 
-      generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
+      generate_blocks( et_op.ratification_deadline + BEARSHARES_BLOCK_INTERVAL, true );
       {
          const auto& escrow = db.get_escrow( op.from, op.escrow_id );
          BOOST_REQUIRE( escrow.to == "bob" );
          BOOST_REQUIRE( escrow.agent == "sam" );
          BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
          BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-         BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
-         BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+         BOOST_REQUIRE( escrow.bsd_balance == ASSET( "0.000 TBD" ) );
+         BOOST_REQUIRE( escrow.bears_balance == ASSET( "1.000 TESTS" ) );
          BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.000 TESTS" ) );
          BOOST_REQUIRE( escrow.to_approved );
          BOOST_REQUIRE( escrow.agent_approved );
@@ -4190,7 +4190,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_validate )
 
       BOOST_TEST_MESSAGE( "failure when who is not from or to" );
       op.who = "sam";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "success" );
       op.who = "alice";
@@ -4248,10 +4248,10 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       et_op.from = "alice";
       et_op.to = "bob";
       et_op.agent = "sam";
-      et_op.steem_amount = ASSET( "1.000 TESTS" );
+      et_op.bears_amount = ASSET( "1.000 TESTS" );
       et_op.fee = ASSET( "0.100 TESTS" );
-      et_op.ratification_deadline = db.head_block_time() + STEEMIT_BLOCK_INTERVAL;
-      et_op.escrow_expiration = db.head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
+      et_op.ratification_deadline = db.head_block_time() + BEARSHARES_BLOCK_INTERVAL;
+      et_op.escrow_expiration = db.head_block_time() + 2 * BEARSHARES_BLOCK_INTERVAL;
 
       escrow_approve_operation ea_b_op;
       ea_b_op.from = "alice";
@@ -4263,7 +4263,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       signed_transaction tx;
       tx.operations.push_back( et_op );
       tx.operations.push_back( ea_b_op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -4280,15 +4280,15 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       const auto& escrow = db.get_escrow( et_op.from, et_op.escrow_id );
       BOOST_REQUIRE( escrow.to == "bob" );
       BOOST_REQUIRE( escrow.agent == "sam" );
       BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
       BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-      BOOST_REQUIRE( escrow.sbd_balance == et_op.sbd_amount );
-      BOOST_REQUIRE( escrow.steem_balance == et_op.steem_amount );
+      BOOST_REQUIRE( escrow.bsd_balance == et_op.bsd_amount );
+      BOOST_REQUIRE( escrow.bears_balance == et_op.bears_amount );
       BOOST_REQUIRE( escrow.pending_fee == et_op.fee );
       BOOST_REQUIRE( escrow.to_approved );
       BOOST_REQUIRE( !escrow.agent_approved );
@@ -4315,14 +4315,14 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
       BOOST_REQUIRE( escrow.agent == "sam" );
       BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
       BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-      BOOST_REQUIRE( escrow.sbd_balance == et_op.sbd_amount );
-      BOOST_REQUIRE( escrow.steem_balance == et_op.steem_amount );
+      BOOST_REQUIRE( escrow.bsd_balance == et_op.bsd_amount );
+      BOOST_REQUIRE( escrow.bears_balance == et_op.bears_amount );
       BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.000 TESTS" ) );
       BOOST_REQUIRE( escrow.to_approved );
       BOOST_REQUIRE( escrow.agent_approved );
@@ -4337,14 +4337,14 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
       BOOST_REQUIRE( escrow.agent == "sam" );
       BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
       BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-      BOOST_REQUIRE( escrow.sbd_balance == et_op.sbd_amount );
-      BOOST_REQUIRE( escrow.steem_balance == et_op.steem_amount );
+      BOOST_REQUIRE( escrow.bsd_balance == et_op.bsd_amount );
+      BOOST_REQUIRE( escrow.bears_balance == et_op.bears_amount );
       BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.000 TESTS" ) );
       BOOST_REQUIRE( escrow.to_approved );
       BOOST_REQUIRE( escrow.agent_approved );
@@ -4358,9 +4358,9 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.signatures.clear();
       op.agent = "sam";
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       {
          const auto& escrow = db.get_escrow( et_op.from, et_op.escrow_id );
@@ -4368,8 +4368,8 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
          BOOST_REQUIRE( escrow.agent == "sam" );
          BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
          BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-         BOOST_REQUIRE( escrow.sbd_balance == et_op.sbd_amount );
-         BOOST_REQUIRE( escrow.steem_balance == et_op.steem_amount );
+         BOOST_REQUIRE( escrow.bsd_balance == et_op.bsd_amount );
+         BOOST_REQUIRE( escrow.bears_balance == et_op.bears_amount );
          BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.000 TESTS" ) );
          BOOST_REQUIRE( escrow.to_approved );
          BOOST_REQUIRE( escrow.agent_approved );
@@ -4379,8 +4379,8 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
 
       BOOST_TEST_MESSAGE( "--- success disputing escrow" );
       et_op.escrow_id = 1;
-      et_op.ratification_deadline = db.head_block_time() + STEEMIT_BLOCK_INTERVAL;
-      et_op.escrow_expiration = db.head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
+      et_op.ratification_deadline = db.head_block_time() + BEARSHARES_BLOCK_INTERVAL;
+      et_op.escrow_expiration = db.head_block_time() + 2 * BEARSHARES_BLOCK_INTERVAL;
       ea_b_op.escrow_id = et_op.escrow_id;
       ea_s_op.escrow_id = et_op.escrow_id;
 
@@ -4407,8 +4407,8 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
          BOOST_REQUIRE( escrow.agent == "sam" );
          BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
          BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-         BOOST_REQUIRE( escrow.sbd_balance == et_op.sbd_amount );
-         BOOST_REQUIRE( escrow.steem_balance == et_op.steem_amount );
+         BOOST_REQUIRE( escrow.bsd_balance == et_op.bsd_amount );
+         BOOST_REQUIRE( escrow.bears_balance == et_op.bears_amount );
          BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.000 TESTS" ) );
          BOOST_REQUIRE( escrow.to_approved );
          BOOST_REQUIRE( escrow.agent_approved );
@@ -4422,7 +4422,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       op.who = "bob";
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       {
          const auto& escrow = db.get_escrow( et_op.from, et_op.escrow_id );
@@ -4430,8 +4430,8 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
          BOOST_REQUIRE( escrow.agent == "sam" );
          BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
          BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
-         BOOST_REQUIRE( escrow.sbd_balance == et_op.sbd_amount );
-         BOOST_REQUIRE( escrow.steem_balance == et_op.steem_amount );
+         BOOST_REQUIRE( escrow.bsd_balance == et_op.bsd_amount );
+         BOOST_REQUIRE( escrow.bears_balance == et_op.bears_amount );
          BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.000 TESTS" ) );
          BOOST_REQUIRE( escrow.to_approved );
          BOOST_REQUIRE( escrow.agent_approved );
@@ -4454,35 +4454,35 @@ BOOST_AUTO_TEST_CASE( escrow_release_validate )
       op.receiver = "bob";
 
 
-      BOOST_TEST_MESSAGE( "--- failure when steem < 0" );
-      op.steem_amount.amount = -1;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bears < 0" );
+      op.bears_amount.amount = -1;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "--- failure when sbd < 0" );
-      op.steem_amount.amount = 0;
-      op.sbd_amount.amount = -1;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bsd < 0" );
+      op.bears_amount.amount = 0;
+      op.bsd_amount.amount = -1;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "--- failure when steem == 0 and sbd == 0" );
-      op.sbd_amount.amount = 0;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bears == 0 and bsd == 0" );
+      op.bsd_amount.amount = 0;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "--- failure when sbd is not sbd symbol" );
-      op.sbd_amount = ASSET( "1.000 TESTS" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bsd is not bsd symbol" );
+      op.bsd_amount = ASSET( "1.000 TESTS" );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "--- failure when steem is not steem symbol" );
-      op.sbd_amount.symbol = SBD_SYMBOL;
-      op.steem_amount = ASSET( "1.000 TBD" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BOOST_TEST_MESSAGE( "--- failure when bears is not bears symbol" );
+      op.bsd_amount.symbol = BSD_SYMBOL;
+      op.bears_amount = ASSET( "1.000 TBD" );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success" );
-      op.steem_amount.symbol = STEEM_SYMBOL;
+      op.bears_amount.symbol = BEARS_SYMBOL;
       op.validate();
    }
    FC_LOG_AND_RETHROW()
@@ -4541,15 +4541,15 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       et_op.from = "alice";
       et_op.to = "bob";
       et_op.agent = "sam";
-      et_op.steem_amount = ASSET( "1.000 TESTS" );
+      et_op.bears_amount = ASSET( "1.000 TESTS" );
       et_op.fee = ASSET( "0.100 TESTS" );
-      et_op.ratification_deadline = db.head_block_time() + STEEMIT_BLOCK_INTERVAL;
-      et_op.escrow_expiration = db.head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
+      et_op.ratification_deadline = db.head_block_time() + BEARSHARES_BLOCK_INTERVAL;
+      et_op.escrow_expiration = db.head_block_time() + 2 * BEARSHARES_BLOCK_INTERVAL;
 
       signed_transaction tx;
       tx.operations.push_back( et_op );
 
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -4561,12 +4561,12 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.agent = et_op.agent;
       op.who = et_op.from;
       op.receiver = et_op.to;
-      op.steem_amount = ASSET( "0.100 TESTS" );
+      op.bears_amount = ASSET( "0.100 TESTS" );
 
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       escrow_approve_operation ea_b_op;
       ea_b_op.from = "alice";
@@ -4592,7 +4592,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE("--- failure when 'agent' attempts to release non-disputed escrow to 'from' " );
@@ -4601,7 +4601,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'agent' attempt to release non-disputed escrow to not 'to' or 'from'" );
@@ -4610,7 +4610,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when other attempts to release non-disputed escrow to 'to'" );
@@ -4620,7 +4620,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE("--- failure when other attempts to release non-disputed escrow to 'from' " );
@@ -4629,7 +4629,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when other attempt to release non-disputed escrow to not 'to' or 'from'" );
@@ -4638,7 +4638,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attemtps to release non-disputed escrow to 'to'" );
@@ -4648,7 +4648,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE("--- failure when 'to' attempts to release non-dispured escrow to 'agent' " );
@@ -4657,7 +4657,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release non-disputed escrow to not 'from'" );
@@ -4666,7 +4666,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed escrow to 'to' from 'from'" );
@@ -4677,7 +4677,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_escrow( op.from, op.escrow_id ).steem_balance == ASSET( "0.900 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( op.from, op.escrow_id ).bears_balance == ASSET( "0.900 TESTS" ) );
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.000 TESTS" ) );
 
 
@@ -4688,7 +4688,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE("--- failure when 'from' attempts to release non-disputed escrow to 'agent'" );
@@ -4697,7 +4697,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release non-disputed escrow to not 'from'" );
@@ -4706,7 +4706,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed escrow to 'from' from 'to'" );
@@ -4717,27 +4717,27 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_escrow( op.from, op.escrow_id ).steem_balance == ASSET( "0.800 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( op.from, op.escrow_id ).bears_balance == ASSET( "0.800 TESTS" ) );
       BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.100 TESTS" ) );
 
 
-      BOOST_TEST_MESSAGE( "--- failure when releasing more sbd than available" );
-      op.steem_amount = ASSET( "1.000 TESTS" );
+      BOOST_TEST_MESSAGE( "--- failure when releasing more bsd than available" );
+      op.bears_amount = ASSET( "1.000 TESTS" );
 
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "--- failure when releasing less steem than available" );
-      op.steem_amount = ASSET( "0.000 TESTS" );
-      op.sbd_amount = ASSET( "1.000 TBD" );
+      BOOST_TEST_MESSAGE( "--- failure when releasing less bears than available" );
+      op.bears_amount = ASSET( "0.000 TESTS" );
+      op.bsd_amount = ASSET( "1.000 TBD" );
 
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release disputed escrow" );
@@ -4756,11 +4756,11 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.from = et_op.from;
       op.receiver = et_op.from;
       op.who = et_op.to;
-      op.steem_amount = ASSET( "0.100 TESTS" );
-      op.sbd_amount = ASSET( "0.000 TBD" );
+      op.bears_amount = ASSET( "0.100 TESTS" );
+      op.bsd_amount = ASSET( "0.000 TBD" );
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release disputed escrow" );
@@ -4769,7 +4769,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = et_op.from;
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when releasing disputed escrow to an account not 'to' or 'from'" );
@@ -4778,7 +4778,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = "dave";
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when agent does not match escrow" );
@@ -4787,7 +4787,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.from;
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success releasing disputed escrow with agent to 'to'" );
@@ -4799,7 +4799,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.200 TESTS" ) );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.700 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).bears_balance == ASSET( "0.700 TESTS" ) );
 
 
       BOOST_TEST_MESSAGE( "--- success releasing disputed escrow with agent to 'from'" );
@@ -4811,7 +4811,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.100 TESTS" ) );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.600 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).bears_balance == ASSET( "0.600 TESTS" ) );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release disputed expired escrow" );
@@ -4821,9 +4821,9 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.from;
       op.who = et_op.to;
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release disputed expired escrow" );
@@ -4832,7 +4832,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = et_op.from;
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success releasing disputed expired escrow with agent" );
@@ -4844,27 +4844,27 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.200 TESTS" ) );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.500 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).bears_balance == ASSET( "0.500 TESTS" ) );
 
 
       BOOST_TEST_MESSAGE( "--- success deleting escrow when balances are both zero" );
       tx.clear();
-      op.steem_amount = ASSET( "0.500 TESTS" );
+      op.bears_amount = ASSET( "0.500 TESTS" );
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.700 TESTS" ) );
-      STEEMIT_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::exception );
 
 
       tx.clear();
-      et_op.ratification_deadline = db.head_block_time() + STEEMIT_BLOCK_INTERVAL;
-      et_op.escrow_expiration = db.head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
+      et_op.ratification_deadline = db.head_block_time() + BEARSHARES_BLOCK_INTERVAL;
+      et_op.escrow_expiration = db.head_block_time() + 2 * BEARSHARES_BLOCK_INTERVAL;
       tx.operations.push_back( et_op );
       tx.operations.push_back( ea_b_op );
       tx.operations.push_back( ea_s_op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
       tx.sign( sam_private_key, db.get_chain_id() );
@@ -4876,10 +4876,10 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       op.receiver = et_op.to;
       op.who = et_op.agent;
-      op.steem_amount = ASSET( "0.100 TESTS" );
+      op.bears_amount = ASSET( "0.100 TESTS" );
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'agent' attempts to release non-disputed expired escrow to 'from'" );
@@ -4887,7 +4887,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.from;
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'agent' attempt to release non-disputed expired escrow to not 'to' or 'from'" );
@@ -4895,7 +4895,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = "dave";
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release non-dispured expired escrow to 'agent'" );
@@ -4904,7 +4904,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.agent;
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release non-disputed expired escrow to not 'from' or 'to'" );
@@ -4912,7 +4912,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = "dave";
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'to' from 'to'" );
@@ -4923,7 +4923,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.300 TESTS" ) );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.900 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).bears_balance == ASSET( "0.900 TESTS" ) );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'from' from 'to'" );
@@ -4934,7 +4934,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "8.700 TESTS" ) );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.800 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).bears_balance == ASSET( "0.800 TESTS" ) );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release non-disputed expired escrow to 'agent'" );
@@ -4943,7 +4943,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.agent;
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release non-disputed expired escrow to not 'from' or 'to'" );
@@ -4951,7 +4951,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = "dave";
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'to' from 'from'" );
@@ -4962,7 +4962,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.400 TESTS" ) );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.700 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).bears_balance == ASSET( "0.700 TESTS" ) );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'from' from 'from'" );
@@ -4973,18 +4973,18 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "8.800 TESTS" ) );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.600 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).bears_balance == ASSET( "0.600 TESTS" ) );
 
 
       BOOST_TEST_MESSAGE( "--- success deleting escrow when balances are zero on non-disputed escrow" );
       tx.clear();
-      op.steem_amount = ASSET( "0.600 TESTS" );
+      op.bears_amount = ASSET( "0.600 TESTS" );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.400 TESTS" ) );
-      STEEMIT_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -5003,13 +5003,13 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_validate )
 
       BOOST_TEST_MESSAGE( "failure when 'from' is empty" );
       op.from = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "failure when 'to' is empty" );
       op.from = "alice";
       op.to = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "sucess when 'to' is not empty" );
@@ -5017,18 +5017,18 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_validate )
       op.validate();
 
 
-      BOOST_TEST_MESSAGE( "failure when amount is VESTS" );
+      BOOST_TEST_MESSAGE( "failure when amount is COINS" );
       op.to = "alice";
-      op.amount = ASSET( "1.000 VESTS" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      op.amount = ASSET( "1.000 COINS" );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "success when amount is SBD" );
+      BOOST_TEST_MESSAGE( "success when amount is BSD" );
       op.amount = ASSET( "1.000 TBD" );
       op.validate();
 
 
-      BOOST_TEST_MESSAGE( "success when amount is STEEM" );
+      BOOST_TEST_MESSAGE( "success when amount is BEARS" );
       op.amount = ASSET( "1.000 TESTS" );
       op.validate();
    }
@@ -5082,7 +5082,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       fund( "alice", ASSET( "10.000 TBD" ) );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == ASSET( "10.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).bsd_balance == ASSET( "10.000 TBD" ) );
 
       transfer_to_savings_operation op;
       signed_transaction tx;
@@ -5093,9 +5093,9 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       op.amount = ASSET( "20.000 TESTS" );
 
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
 
@@ -5106,11 +5106,11 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success transferring STEEM to self" );
+      BOOST_TEST_MESSAGE( "--- success transferring BEARS to self" );
       op.to = "alice";
 
       tx.clear();
@@ -5123,7 +5123,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success transferring SBD to self" );
+      BOOST_TEST_MESSAGE( "--- success transferring BSD to self" );
       op.amount = ASSET( "1.000 TBD" );
 
       tx.clear();
@@ -5131,12 +5131,12 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == ASSET( "9.000 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).savings_sbd_balance == ASSET( "1.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).bsd_balance == ASSET( "9.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).savings_bsd_balance == ASSET( "1.000 TBD" ) );
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success transferring STEEM to other" );
+      BOOST_TEST_MESSAGE( "--- success transferring BEARS to other" );
       op.to = "bob";
       op.amount = ASSET( "1.000 TESTS" );
 
@@ -5150,7 +5150,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success transferring SBD to other" );
+      BOOST_TEST_MESSAGE( "--- success transferring BSD to other" );
       op.amount = ASSET( "1.000 TBD" );
 
       tx.clear();
@@ -5158,8 +5158,8 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == ASSET( "8.000 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "bob" ).savings_sbd_balance == ASSET( "1.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).bsd_balance == ASSET( "8.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "bob" ).savings_bsd_balance == ASSET( "1.000 TBD" ) );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -5180,13 +5180,13 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_validate )
 
       BOOST_TEST_MESSAGE( "failure when 'from' is empty" );
       op.from = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "failure when 'to' is empty" );
       op.from = "alice";
       op.to = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "sucess when 'to' is not empty" );
@@ -5194,18 +5194,18 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_validate )
       op.validate();
 
 
-      BOOST_TEST_MESSAGE( "failure when amount is VESTS" );
+      BOOST_TEST_MESSAGE( "failure when amount is COINS" );
       op.to = "alice";
-      op.amount = ASSET( "1.000 VESTS" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      op.amount = ASSET( "1.000 COINS" );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "success when amount is SBD" );
+      BOOST_TEST_MESSAGE( "success when amount is BSD" );
       op.amount = ASSET( "1.000 TBD" );
       op.validate();
 
 
-      BOOST_TEST_MESSAGE( "success when amount is STEEM" );
+      BOOST_TEST_MESSAGE( "success when amount is BEARS" );
       op.amount = ASSET( "1.000 TESTS" );
       op.validate();
    }
@@ -5265,7 +5265,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
 
       signed_transaction tx;
       tx.operations.push_back( save );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -5286,7 +5286,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure withdrawing to non-existant account" );
@@ -5296,10 +5296,10 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "--- success withdrawing STEEM to self" );
+      BOOST_TEST_MESSAGE( "--- success withdrawing BEARS to self" );
       op.to = "alice";
 
       tx.clear();
@@ -5315,11 +5315,11 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       BOOST_REQUIRE( to_string( db.get_savings_withdraw( "alice", op.request_id ).memo ) == op.memo );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).request_id == op.request_id );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).amount == op.amount );
-      BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).complete == db.head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME );
+      BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).complete == db.head_block_time() + BEARSHARES_SAVINGS_WITHDRAW_TIME );
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success withdrawing SBD to self" );
+      BOOST_TEST_MESSAGE( "--- success withdrawing BSD to self" );
       op.amount = ASSET( "1.000 TBD" );
       op.request_id = 1;
 
@@ -5328,15 +5328,15 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).savings_sbd_balance == ASSET( "9.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).bsd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).savings_bsd_balance == ASSET( "9.000 TBD" ) );
       BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == 2 );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).from == op.from );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).to == op.to );
       BOOST_REQUIRE( to_string( db.get_savings_withdraw( "alice", op.request_id ).memo ) == op.memo );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).request_id == op.request_id );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).amount == op.amount );
-      BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).complete == db.head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME );
+      BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).complete == db.head_block_time() + BEARSHARES_SAVINGS_WITHDRAW_TIME );
       validate_database();
 
 
@@ -5346,10 +5346,10 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "--- success withdrawing STEEM to other" );
+      BOOST_TEST_MESSAGE( "--- success withdrawing BEARS to other" );
       op.to = "bob";
       op.amount = ASSET( "1.000 TESTS" );
       op.request_id = 3;
@@ -5367,11 +5367,11 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       BOOST_REQUIRE( to_string( db.get_savings_withdraw( "alice", op.request_id ).memo ) == op.memo );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).request_id == op.request_id );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).amount == op.amount );
-      BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).complete == db.head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME );
+      BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).complete == db.head_block_time() + BEARSHARES_SAVINGS_WITHDRAW_TIME );
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success withdrawing SBD to other" );
+      BOOST_TEST_MESSAGE( "--- success withdrawing BSD to other" );
       op.amount = ASSET( "1.000 TBD" );
       op.request_id = 4;
 
@@ -5380,44 +5380,44 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).savings_sbd_balance == ASSET( "8.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).bsd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).savings_bsd_balance == ASSET( "8.000 TBD" ) );
       BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == 4 );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).from == op.from );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).to == op.to );
       BOOST_REQUIRE( to_string( db.get_savings_withdraw( "alice", op.request_id ).memo ) == op.memo );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).request_id == op.request_id );
       BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).amount == op.amount );
-      BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).complete == db.head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME );
+      BOOST_REQUIRE( db.get_savings_withdraw( "alice", op.request_id ).complete == db.head_block_time() + BEARSHARES_SAVINGS_WITHDRAW_TIME );
       validate_database();
 
 
       BOOST_TEST_MESSAGE( "--- withdraw on timeout" );
-      generate_blocks( db.head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME - fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+      generate_blocks( db.head_block_time() + BEARSHARES_SAVINGS_WITHDRAW_TIME - fc::seconds( BEARSHARES_BLOCK_INTERVAL ), true );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "0.000 TESTS" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).bsd_balance == ASSET( "0.000 TBD" ) );
       BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.000 TESTS" ) );
-      BOOST_REQUIRE( db.get_account( "bob" ).sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "bob" ).bsd_balance == ASSET( "0.000 TBD" ) );
       BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == 4 );
       validate_database();
 
       generate_block();
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "1.000 TESTS" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == ASSET( "1.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).bsd_balance == ASSET( "1.000 TBD" ) );
       BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "1.000 TESTS" ) );
-      BOOST_REQUIRE( db.get_account( "bob" ).sbd_balance == ASSET( "1.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "bob" ).bsd_balance == ASSET( "1.000 TBD" ) );
       BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == 0 );
       validate_database();
 
 
       BOOST_TEST_MESSAGE( "--- savings withdraw request limit" );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       op.to = "alice";
       op.amount = ASSET( "0.001 TESTS" );
 
-      for( int i = 0; i < STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT; i++ )
+      for( int i = 0; i < BEARSHARES_SAVINGS_WITHDRAW_REQUEST_LIMIT; i++ )
       {
          op.request_id = i;
          tx.clear();
@@ -5427,12 +5427,12 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
          BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == i + 1 );
       }
 
-      op.request_id = STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT;
+      op.request_id = BEARSHARES_SAVINGS_WITHDRAW_REQUEST_LIMIT;
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
-      BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == BEARSHARES_SAVINGS_WITHDRAW_REQUEST_LIMIT );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -5451,7 +5451,7 @@ BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_validate )
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' is empty" );
       op.from = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- sucess when 'from' is not empty" );
@@ -5516,7 +5516,7 @@ BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_apply )
       withdraw.amount = ASSET( "3.000 TESTS" );
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( save );
       tx.operations.push_back( withdraw );
       tx.sign( alice_private_key, db.get_chain_id() );
@@ -5535,7 +5535,7 @@ BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
       BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == 1 );
@@ -5594,8 +5594,8 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
 
       ACTORS( (alice)(bob) );
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
-      vest( "bob", ASSET( "10.000 TESTS" ) );
+      coin( "alice", ASSET( "10.000 TESTS" ) );
+      coin( "bob", ASSET( "10.000 TESTS" ) );
       generate_block();
 
       account_witness_proxy_operation proxy;
@@ -5603,7 +5603,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       proxy.proxy = "alice";
 
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( proxy );
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -5622,16 +5622,16 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       const auto& request_idx = db.get_index< decline_voting_rights_request_index >().indices().get< by_account >();
       auto itr = request_idx.find( db.get_account( "alice" ).id );
       BOOST_REQUIRE( itr != request_idx.end() );
-      BOOST_REQUIRE( itr->effective_date == db.head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD );
+      BOOST_REQUIRE( itr->effective_date == db.head_block_time() + BEARSHARES_OWNER_AUTH_RECOVERY_PERIOD );
 
 
       BOOST_TEST_MESSAGE( "--- failure revoking voting rights with existing request" );
       generate_block();
       tx.clear();
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- successs cancelling a request" );
@@ -5649,9 +5649,9 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       generate_block();
       tx.clear();
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- check account can vote during waiting period" );
@@ -5661,7 +5661,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( db.head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD - fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+      generate_blocks( db.head_block_time() + BEARSHARES_OWNER_AUTH_RECOVERY_PERIOD - fc::seconds( BEARSHARES_BLOCK_INTERVAL ), true );
       BOOST_REQUIRE( db.get_account( "alice" ).can_vote );
       witness_create( "alice", alice_private_key, "foo.bar", alice_private_key.get_public_key(), 0 );
 
@@ -5670,7 +5670,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       witness_vote.witness = "alice";
       tx.clear();
       tx.operations.push_back( witness_vote );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -5684,7 +5684,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       vote.voter = "alice";
       vote.author = "alice";
       vote.permlink = "test";
-      vote.weight = STEEMIT_100_PERCENT;
+      vote.weight = BEARSHARES_100_PERCENT;
       tx.clear();
       tx.operations.push_back( comment );
       tx.operations.push_back( vote );
@@ -5706,10 +5706,10 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       BOOST_REQUIRE( witness_itr == witness_idx.end() );
 
       tx.clear();
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( witness_vote );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       db.get< comment_vote_object, by_comment_voter >( boost::make_tuple( db.get_comment( "alice", string( "test" ) ).id, db.get_account( "alice" ).id ) );
 
@@ -5717,20 +5717,20 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.clear();
       tx.operations.push_back( vote );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
-      vote.weight = STEEMIT_1_PERCENT * 50;
+      vote.weight = BEARSHARES_1_PERCENT * 50;
       tx.clear();
       tx.operations.push_back( vote );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       proxy.account = "alice";
       proxy.proxy = "bob";
       tx.clear();
       tx.operations.push_back( proxy );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -5742,9 +5742,9 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
       BOOST_TEST_MESSAGE( "Testing: account_bandwidth" );
       ACTORS( (alice)(bob) )
       generate_block();
-      vest( "alice", ASSET( "10.000 TESTS" ) );
+      coin( "alice", ASSET( "10.000 TESTS" ) );
       fund( "alice", ASSET( "10.000 TESTS" ) );
-      vest( "bob", ASSET( "10.000 TESTS" ) );
+      coin( "bob", ASSET( "10.000 TESTS" ) );
 
       generate_block();
       db.skip_transaction_delta_check = false;
@@ -5759,7 +5759,7 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
       op.amount = ASSET( "1.000 TESTS" );
 
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
 
       db.push_transaction( tx, 0 );
@@ -5767,7 +5767,7 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
       auto last_bandwidth_update = db.get< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( "alice", witness::bandwidth_type::market ) ).last_bandwidth_update;
       auto average_bandwidth = db.get< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( "alice", witness::bandwidth_type::market ) ).average_bandwidth;
       BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
-      BOOST_REQUIRE( average_bandwidth == fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
+      BOOST_REQUIRE( average_bandwidth == fc::raw::pack_size( tx ) * 10 * BEARSHARES_BANDWIDTH_PRECISION );
       auto total_bandwidth = average_bandwidth;
 
       BOOST_TEST_MESSAGE( "--- Test second tx in block" );
@@ -5775,7 +5775,7 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
       op.amount = ASSET( "0.100 TESTS" );
       tx.clear();
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
 
       db.push_transaction( tx, 0 );
@@ -5783,7 +5783,7 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
       last_bandwidth_update = db.get< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( "alice", witness::bandwidth_type::market ) ).last_bandwidth_update;
       average_bandwidth = db.get< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( "alice", witness::bandwidth_type::market ) ).average_bandwidth;
       BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
-      BOOST_REQUIRE( average_bandwidth == total_bandwidth + fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
+      BOOST_REQUIRE( average_bandwidth == total_bandwidth + fc::raw::pack_size( tx ) * 10 * BEARSHARES_BANDWIDTH_PRECISION );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -5794,51 +5794,51 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance_validate )
    {
       claim_reward_balance_operation op;
       op.account = "alice";
-      op.reward_steem = ASSET( "0.000 TESTS" );
-      op.reward_sbd = ASSET( "0.000 TBD" );
-      op.reward_vests = ASSET( "0.000000 VESTS" );
+      op.reward_bears = ASSET( "0.000 TESTS" );
+      op.reward_bsd = ASSET( "0.000 TBD" );
+      op.reward_coins = ASSET( "0.000000 COINS" );
 
 
       BOOST_TEST_MESSAGE( "Testing all 0 amounts" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "Testing single reward claims" );
-      op.reward_steem.amount = 1000;
+      op.reward_bears.amount = 1000;
       op.validate();
 
-      op.reward_steem.amount = 0;
-      op.reward_sbd.amount = 1000;
+      op.reward_bears.amount = 0;
+      op.reward_bsd.amount = 1000;
       op.validate();
 
-      op.reward_sbd.amount = 0;
-      op.reward_vests.amount = 1000;
+      op.reward_bsd.amount = 0;
+      op.reward_coins.amount = 1000;
       op.validate();
 
-      op.reward_vests.amount = 0;
+      op.reward_coins.amount = 0;
 
 
-      BOOST_TEST_MESSAGE( "Testing wrong STEEM symbol" );
-      op.reward_steem = ASSET( "1.000 WRONG" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "Testing wrong BEARS symbol" );
+      op.reward_bears = ASSET( "1.000 WRONG" );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
 
-      BOOST_TEST_MESSAGE( "Testing wrong SBD symbol" );
-      op.reward_steem = ASSET( "1.000 TESTS" );
-      op.reward_sbd = ASSET( "1.000 WRONG" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "Testing wrong BSD symbol" );
+      op.reward_bears = ASSET( "1.000 TESTS" );
+      op.reward_bsd = ASSET( "1.000 WRONG" );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
 
-      BOOST_TEST_MESSAGE( "Testing wrong VESTS symbol" );
-      op.reward_sbd = ASSET( "1.000 TBD" );
-      op.reward_vests = ASSET( "1.000000 WRONG" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BOOST_TEST_MESSAGE( "Testing wrong COINS symbol" );
+      op.reward_bsd = ASSET( "1.000 TBD" );
+      op.reward_coins = ASSET( "1.000000 WRONG" );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "Testing a single negative amount" );
-      op.reward_steem.amount = 1000;
-      op.reward_sbd.amount = -1000;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.reward_bears.amount = 1000;
+      op.reward_bsd.amount = -1000;
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -5878,13 +5878,13 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_authorities )
      ACTORS( (alice) );
      generate_blocks(1);
      fund( "alice", ASSET("1000.000 TESTS") );
-     vest( "alice", ASSET("10000.000000 VESTS") );
+     coin( "alice", ASSET("10000.000000 COINS") );
 
      private_key_type priv_key = generate_private_key( "temp_key" );
 
      account_create_with_delegation_operation op;
      op.fee = ASSET("0.000 TESTS");
-     op.delegation = asset(100, VESTS_SYMBOL);
+     op.delegation = asset(100, COINS_SYMBOL);
      op.creator = "alice";
      op.new_account_name = "bob";
      op.owner = authority( 1, priv_key.get_public_key(), 1 );
@@ -5892,11 +5892,11 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_authorities )
      op.memo_key = priv_key.get_public_key();
      op.json_metadata = "{\"foo\":\"bar\"}";
 
-     tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+     tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
      tx.operations.push_back( op );
 
      BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-     STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+     BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
      BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
      tx.sign( alice_private_key, db.get_chain_id() );
@@ -5909,18 +5909,18 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_authorities )
      tx.operations.push_back( op );
      tx.sign( alice_private_key, db.get_chain_id() );
      tx.sign( alice_private_key, db.get_chain_id() );
-     STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+     BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
      BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
      tx.signatures.clear();
      tx.sign( init_account_priv_key, db.get_chain_id() );
      tx.sign( alice_private_key, db.get_chain_id() );
-     STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+     BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
      BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the creator's authority" );
      tx.signatures.clear();
      tx.sign( init_account_priv_key, db.get_chain_id() );
-     STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+     BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
      validate_database();
    }
@@ -5935,11 +5935,11 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       BOOST_TEST_MESSAGE( "Testing: account_create_with_delegation_apply" );
       signed_transaction tx;
       ACTORS( (alice) );
-      // 150 * fee = ( 5 * STEEM ) + SP
+      // 150 * fee = ( 5 * BEARS ) + SP
       auto gpo = db.get_dynamic_global_properties();
       generate_blocks(1);
       fund( "alice", ASSET("1510.000 TESTS") );
-      vest( "alice", ASSET("1000.000 TESTS") );
+      coin( "alice", ASSET("1000.000 TESTS") );
 
       private_key_type priv_key = generate_private_key( "temp_key" );
 
@@ -5955,13 +5955,13 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
 
       generate_block();
 
-      BOOST_TEST_MESSAGE( "--- Test failure when VESTS are powering down." );
-      withdraw_vesting_operation withdraw;
+      BOOST_TEST_MESSAGE( "--- Test failure when COINS are powering down." );
+      withdraw_coining_operation withdraw;
       withdraw.account = "alice";
-      withdraw.vesting_shares = db.get_account( "alice" ).vesting_shares;
+      withdraw.coining_shares = db.get_account( "alice" ).coining_shares;
       account_create_with_delegation_operation op;
       op.fee = ASSET( "10.000 TESTS" );
-      op.delegation = ASSET( "100000000.000000 VESTS" );
+      op.delegation = ASSET( "100000000.000000 COINS" );
       op.creator = "alice";
       op.new_account_name = "bob";
       op.owner = authority( 1, priv_key.get_public_key(), 1 );
@@ -5970,9 +5970,9 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       op.json_metadata = "{\"foo\":\"bar\"}";
       tx.operations.push_back( withdraw );
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test success under normal conditions. " );
@@ -5983,30 +5983,30 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
 
       const account_object& bob_acc = db.get_account( "bob" );
       const account_object& alice_acc = db.get_account( "alice" );
-      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "100000000.000000 VESTS" ) );
-      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "100000000.000000 VESTS" ) );
-      BOOST_REQUIRE( bob_acc.effective_vesting_shares() == bob_acc.vesting_shares - bob_acc.delegated_vesting_shares + bob_acc.received_vesting_shares);
+      BOOST_REQUIRE( alice_acc.delegated_coining_shares == ASSET( "100000000.000000 COINS" ) );
+      BOOST_REQUIRE( bob_acc.received_coining_shares == ASSET( "100000000.000000 COINS" ) );
+      BOOST_REQUIRE( bob_acc.effective_coining_shares() == bob_acc.coining_shares - bob_acc.delegated_coining_shares + bob_acc.received_coining_shares);
 
       BOOST_TEST_MESSAGE( "--- Test delegator object integrety. " );
-      auto delegation = db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.creator, op.new_account_name ) );
+      auto delegation = db.find< coining_delegation_object, by_delegation >( boost::make_tuple( op.creator, op.new_account_name ) );
 
       BOOST_REQUIRE( delegation != nullptr);
       BOOST_REQUIRE( delegation->delegator == op.creator);
       BOOST_REQUIRE( delegation->delegatee == op.new_account_name );
-      BOOST_REQUIRE( delegation->vesting_shares == ASSET( "100000000.000000 VESTS" ) );
-      BOOST_REQUIRE( delegation->min_delegation_time == db.head_block_time() + STEEMIT_CREATE_ACCOUNT_DELEGATION_TIME );
-      auto del_amt = delegation->vesting_shares;
+      BOOST_REQUIRE( delegation->coining_shares == ASSET( "100000000.000000 COINS" ) );
+      BOOST_REQUIRE( delegation->min_delegation_time == db.head_block_time() + BEARSHARES_CREATE_ACCOUNT_DELEGATION_TIME );
+      auto del_amt = delegation->coining_shares;
       auto exp_time = delegation->min_delegation_time;
 
       generate_block();
 
-      BOOST_TEST_MESSAGE( "--- Test success using only STEEM to reach target delegation." );
+      BOOST_TEST_MESSAGE( "--- Test success using only BEARS to reach target delegation." );
 
       tx.clear();
-      op.fee=asset( db.get_witness_schedule_object().median_props.account_creation_fee.amount * STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER * STEEMIT_CREATE_ACCOUNT_DELEGATION_RATIO, STEEM_SYMBOL );
-      op.delegation = asset(0, VESTS_SYMBOL);
+      op.fee=asset( db.get_witness_schedule_object().median_props.account_creation_fee.amount * BEARSHARES_CREATE_ACCOUNT_WITH_BEARS_MODIFIER * BEARSHARES_CREATE_ACCOUNT_DELEGATION_RATIO, BEARS_SYMBOL );
+      op.delegation = asset(0, COINS_SYMBOL);
       op.new_account_name = "sam";
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -6014,37 +6014,37 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       BOOST_TEST_MESSAGE( "--- Test failure when insufficient funds to process transaction." );
       tx.clear();
       op.fee = ASSET( "10.000 TESTS" );
-      op.delegation = ASSET( "0.000000 VESTS" );
+      op.delegation = ASSET( "0.000000 COINS" );
       op.new_account_name = "pam";
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test failure when insufficient fee fo reach target delegation." );
-      fund( "alice" , asset( db.get_witness_schedule_object().median_props.account_creation_fee.amount * STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER * STEEMIT_CREATE_ACCOUNT_DELEGATION_RATIO , STEEM_SYMBOL ));
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+      fund( "alice" , asset( db.get_witness_schedule_object().median_props.account_creation_fee.amount * BEARSHARES_CREATE_ACCOUNT_WITH_BEARS_MODIFIER * BEARSHARES_CREATE_ACCOUNT_DELEGATION_RATIO , BEARS_SYMBOL ));
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       validate_database();
 
 
       BOOST_TEST_MESSAGE( "--- Test removing delegation from new account" );
       tx.clear();
-      delegate_vesting_shares_operation delegate;
+      delegate_coining_shares_operation delegate;
       delegate.delegator = "alice";
       delegate.delegatee = "bob";
-      delegate.vesting_shares = ASSET( "0.000000 VESTS" );
+      delegate.coining_shares = ASSET( "0.000000 COINS" );
       tx.operations.push_back( delegate );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      auto itr = db.get_index< vesting_delegation_expiration_index, by_id >().begin();
-      auto end = db.get_index< vesting_delegation_expiration_index, by_id >().end();
+      auto itr = db.get_index< coining_delegation_expiration_index, by_id >().begin();
+      auto end = db.get_index< coining_delegation_expiration_index, by_id >().end();
 
       BOOST_REQUIRE( itr != end );
       BOOST_REQUIRE( itr->delegator == "alice" );
-      BOOST_REQUIRE( itr->vesting_shares == del_amt );
+      BOOST_REQUIRE( itr->coining_shares == del_amt );
       BOOST_REQUIRE( itr->expiration == exp_time );
       validate_database();
    }
@@ -6067,121 +6067,121 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance_apply )
       {
          db.modify( db.get_account( "alice" ), []( account_object& a )
          {
-            a.reward_steem_balance = ASSET( "10.000 TESTS" );
-            a.reward_sbd_balance = ASSET( "10.000 TBD" );
-            a.reward_vesting_balance = ASSET( "10.000000 VESTS" );
-            a.reward_vesting_steem = ASSET( "10.000 TESTS" );
+            a.reward_bears_balance = ASSET( "10.000 TESTS" );
+            a.reward_bsd_balance = ASSET( "10.000 TBD" );
+            a.reward_coining_balance = ASSET( "10.000000 COINS" );
+            a.reward_coining_bears = ASSET( "10.000 TESTS" );
          });
 
          db.modify( db.get_dynamic_global_properties(), []( dynamic_global_property_object& gpo )
          {
             gpo.current_supply += ASSET( "20.000 TESTS" );
-            gpo.current_sbd_supply += ASSET( "10.000 TBD" );
+            gpo.current_bsd_supply += ASSET( "10.000 TBD" );
             gpo.virtual_supply += ASSET( "20.000 TESTS" );
-            gpo.pending_rewarded_vesting_shares += ASSET( "10.000000 VESTS" );
-            gpo.pending_rewarded_vesting_steem += ASSET( "10.000 TESTS" );
+            gpo.pending_rewarded_coining_shares += ASSET( "10.000000 COINS" );
+            gpo.pending_rewarded_coining_bears += ASSET( "10.000 TESTS" );
          });
       });
 
       generate_block();
       validate_database();
 
-      auto alice_steem = db.get_account( "alice" ).balance;
-      auto alice_sbd = db.get_account( "alice" ).sbd_balance;
-      auto alice_vests = db.get_account( "alice" ).vesting_shares;
+      auto alice_bears = db.get_account( "alice" ).balance;
+      auto alice_bsd = db.get_account( "alice" ).bsd_balance;
+      auto alice_coins = db.get_account( "alice" ).coining_shares;
 
 
-      BOOST_TEST_MESSAGE( "--- Attempting to claim more STEEM than exists in the reward balance." );
+      BOOST_TEST_MESSAGE( "--- Attempting to claim more BEARS than exists in the reward balance." );
 
       claim_reward_balance_operation op;
       signed_transaction tx;
 
       op.account = "alice";
-      op.reward_steem = ASSET( "20.000 TESTS" );
-      op.reward_sbd = ASSET( "0.000 TBD" );
-      op.reward_vests = ASSET( "0.000000 VESTS" );
+      op.reward_bears = ASSET( "20.000 TESTS" );
+      op.reward_bsd = ASSET( "0.000 TBD" );
+      op.reward_coins = ASSET( "0.000000 COINS" );
 
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Claiming a partial reward balance" );
 
-      op.reward_steem = ASSET( "0.000 TESTS" );
-      op.reward_vests = ASSET( "5.000000 VESTS" );
+      op.reward_bears = ASSET( "0.000 TESTS" );
+      op.reward_coins = ASSET( "5.000000 COINS" );
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).balance == alice_steem + op.reward_steem );
-      BOOST_REQUIRE( db.get_account( "alice" ).reward_steem_balance == ASSET( "10.000 TESTS" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == alice_sbd + op.reward_sbd );
-      BOOST_REQUIRE( db.get_account( "alice" ).reward_sbd_balance == ASSET( "10.000 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).vesting_shares == alice_vests + op.reward_vests );
-      BOOST_REQUIRE( db.get_account( "alice" ).reward_vesting_balance == ASSET( "5.000000 VESTS" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).reward_vesting_steem == ASSET( "5.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == alice_bears + op.reward_bears );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_bears_balance == ASSET( "10.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).bsd_balance == alice_bsd + op.reward_bsd );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_bsd_balance == ASSET( "10.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).coining_shares == alice_coins + op.reward_coins );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_coining_balance == ASSET( "5.000000 COINS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_coining_bears == ASSET( "5.000 TESTS" ) );
       validate_database();
 
-      alice_vests += op.reward_vests;
+      alice_coins += op.reward_coins;
 
 
       BOOST_TEST_MESSAGE( "--- Claiming the full reward balance" );
 
-      op.reward_steem = ASSET( "10.000 TESTS" );
-      op.reward_sbd = ASSET( "10.000 TBD" );
+      op.reward_bears = ASSET( "10.000 TESTS" );
+      op.reward_bsd = ASSET( "10.000 TBD" );
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).balance == alice_steem + op.reward_steem );
-      BOOST_REQUIRE( db.get_account( "alice" ).reward_steem_balance == ASSET( "0.000 TESTS" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == alice_sbd + op.reward_sbd );
-      BOOST_REQUIRE( db.get_account( "alice" ).reward_sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).vesting_shares == alice_vests + op.reward_vests );
-      BOOST_REQUIRE( db.get_account( "alice" ).reward_vesting_balance == ASSET( "0.000000 VESTS" ) );
-      BOOST_REQUIRE( db.get_account( "alice" ).reward_vesting_steem == ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == alice_bears + op.reward_bears );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_bears_balance == ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).bsd_balance == alice_bsd + op.reward_bsd );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_bsd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).coining_shares == alice_coins + op.reward_coins );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_coining_balance == ASSET( "0.000000 COINS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_coining_bears == ASSET( "0.000 TESTS" ) );
             validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( delegate_vesting_shares_validate )
+BOOST_AUTO_TEST_CASE( delegate_coining_shares_validate )
 {
    try
    {
-      delegate_vesting_shares_operation op;
+      delegate_coining_shares_operation op;
 
       op.delegator = "alice";
       op.delegatee = "bob";
-      op.vesting_shares = asset( -1, VESTS_SYMBOL );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.coining_shares = asset( -1, COINS_SYMBOL );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( delegate_vesting_shares_authorities )
+BOOST_AUTO_TEST_CASE( delegate_coining_shares_authorities )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Testing: delegate_vesting_shares_authorities" );
+      BOOST_TEST_MESSAGE( "Testing: delegate_coining_shares_authorities" );
       signed_transaction tx;
       ACTORS( (alice)(bob) )
-      vest( "alice", ASSET( "10000.000000 VESTS" ) );
+      coin( "alice", ASSET( "10000.000000 COINS" ) );
 
-      delegate_vesting_shares_operation op;
-      op.vesting_shares = ASSET( "300.000000 VESTS");
+      delegate_coining_shares_operation op;
+      op.coining_shares = ASSET( "300.000000 COINS");
       op.delegator = "alice";
       op.delegatee = "bob";
 
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
 
       BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
       tx.sign( alice_private_key, db.get_chain_id() );
@@ -6194,33 +6194,33 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_authorities )
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
       tx.signatures.clear();
       tx.sign( init_account_priv_key, db.get_chain_id() );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the creator's authority" );
       tx.signatures.clear();
       tx.sign( init_account_priv_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
+BOOST_AUTO_TEST_CASE( delegate_coining_shares_apply )
 {
    try
    {
-      BOOST_TEST_MESSAGE( "Testing: delegate_vesting_shares_apply" );
+      BOOST_TEST_MESSAGE( "Testing: delegate_coining_shares_apply" );
       signed_transaction tx;
       ACTORS( (alice)(bob) )
       generate_block();
 
-      vest( "alice", ASSET( "1000.000 TESTS" ) );
+      coin( "alice", ASSET( "1000.000 TESTS" ) );
 
       generate_block();
 
@@ -6234,12 +6234,12 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       generate_block();
 
-      delegate_vesting_shares_operation op;
-      op.vesting_shares = ASSET( "10000000.000000 VESTS");
+      delegate_coining_shares_operation op;
+      op.coining_shares = ASSET( "10000000.000000 COINS");
       op.delegator = "alice";
       op.delegatee = "bob";
 
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -6247,20 +6247,20 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       const account_object& alice_acc = db.get_account( "alice" );
       const account_object& bob_acc = db.get_account( "bob" );
 
-      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "10000000.000000 VESTS"));
-      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "10000000.000000 VESTS"));
+      BOOST_REQUIRE( alice_acc.delegated_coining_shares == ASSET( "10000000.000000 COINS"));
+      BOOST_REQUIRE( bob_acc.received_coining_shares == ASSET( "10000000.000000 COINS"));
 
       BOOST_TEST_MESSAGE( "--- Test that the delegation object is correct. " );
-      auto delegation = db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
+      auto delegation = db.find< coining_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
 
       BOOST_REQUIRE( delegation != nullptr );
       BOOST_REQUIRE( delegation->delegator == op.delegator);
-      BOOST_REQUIRE( delegation->vesting_shares  == ASSET( "10000000.000000 VESTS"));
+      BOOST_REQUIRE( delegation->coining_shares  == ASSET( "10000000.000000 COINS"));
 
       validate_database();
       tx.clear();
-      op.vesting_shares = ASSET( "20000000.000000 VESTS");
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      op.coining_shares = ASSET( "20000000.000000 COINS");
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -6268,11 +6268,11 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       BOOST_REQUIRE( delegation != nullptr );
       BOOST_REQUIRE( delegation->delegator == op.delegator);
-      BOOST_REQUIRE( delegation->vesting_shares == ASSET( "20000000.000000 VESTS"));
-      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "20000000.000000 VESTS"));
-      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "20000000.000000 VESTS"));
+      BOOST_REQUIRE( delegation->coining_shares == ASSET( "20000000.000000 COINS"));
+      BOOST_REQUIRE( alice_acc.delegated_coining_shares == ASSET( "20000000.000000 COINS"));
+      BOOST_REQUIRE( bob_acc.received_coining_shares == ASSET( "20000000.000000 COINS"));
 
-      BOOST_TEST_MESSAGE( "--- Test that effective vesting shares is accurate and being applied." );
+      BOOST_TEST_MESSAGE( "--- Test that effective coining shares is accurate and being applied." );
       tx.operations.clear();
       tx.signatures.clear();
 
@@ -6283,7 +6283,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       comment_op.title = "bar";
       comment_op.body = "foo bar";
       tx.operations.push_back( comment_op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
       tx.signatures.clear();
@@ -6292,8 +6292,8 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       vote_op.voter = "bob";
       vote_op.author = "alice";
       vote_op.permlink = "foo";
-      vote_op.weight = STEEMIT_100_PERCENT;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      vote_op.weight = BEARSHARES_100_PERCENT;
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( vote_op );
       tx.sign( bob_private_key, db.get_chain_id() );
       auto old_voting_power = bob_acc.voting_power;
@@ -6305,115 +6305,115 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       auto& alice_comment = db.get_comment( "alice", string( "foo" ) );
       auto itr = vote_idx.find( std::make_tuple( alice_comment.id, bob_acc.id ) );
-      BOOST_REQUIRE( alice_comment.net_rshares.value == bob_acc.effective_vesting_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEMIT_100_PERCENT );
-      BOOST_REQUIRE( itr->rshares == bob_acc.effective_vesting_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / STEEMIT_100_PERCENT );
+      BOOST_REQUIRE( alice_comment.net_rshares.value == bob_acc.effective_coining_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / BEARSHARES_100_PERCENT );
+      BOOST_REQUIRE( itr->rshares == bob_acc.effective_coining_shares().amount.value * ( old_voting_power - bob_acc.voting_power ) / BEARSHARES_100_PERCENT );
 
 
       generate_block();
       ACTORS( (sam)(dave) )
       generate_block();
 
-      vest( "sam", ASSET( "1000.000 TESTS" ) );
+      coin( "sam", ASSET( "1000.000 TESTS" ) );
 
       generate_block();
 
-      auto sam_vest = db.get_account( "sam" ).vesting_shares;
+      auto sam_coin = db.get_account( "sam" ).coining_shares;
 
-      BOOST_TEST_MESSAGE( "--- Test failure when delegating 0 VESTS" );
+      BOOST_TEST_MESSAGE( "--- Test failure when delegating 0 COINS" );
       tx.clear();
       op.delegator = "sam";
       op.delegatee = "dave";
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
 
-      BOOST_TEST_MESSAGE( "--- Testing failure delegating more vesting shares than account has." );
+      BOOST_TEST_MESSAGE( "--- Testing failure delegating more coining shares than account has." );
       tx.clear();
-      op.vesting_shares = asset( sam_vest.amount + 1, VESTS_SYMBOL );
+      op.coining_shares = asset( sam_coin.amount + 1, COINS_SYMBOL );
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
 
-      BOOST_TEST_MESSAGE( "--- Test failure delegating vesting shares that are part of a power down" );
+      BOOST_TEST_MESSAGE( "--- Test failure delegating coining shares that are part of a power down" );
       tx.clear();
-      sam_vest = asset( sam_vest.amount / 2, VESTS_SYMBOL );
-      withdraw_vesting_operation withdraw;
+      sam_coin = asset( sam_coin.amount / 2, COINS_SYMBOL );
+      withdraw_coining_operation withdraw;
       withdraw.account = "sam";
-      withdraw.vesting_shares = sam_vest;
+      withdraw.coining_shares = sam_coin;
       tx.operations.push_back( withdraw );
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
       tx.clear();
-      op.vesting_shares = asset( sam_vest.amount + 2, VESTS_SYMBOL );
+      op.coining_shares = asset( sam_coin.amount + 2, COINS_SYMBOL );
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
       tx.clear();
-      withdraw.vesting_shares = ASSET( "0.000000 VESTS" );
+      withdraw.coining_shares = ASSET( "0.000000 COINS" );
       tx.operations.push_back( withdraw );
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
 
-      BOOST_TEST_MESSAGE( "--- Test failure powering down vesting shares that are delegated" );
-      sam_vest.amount += 1000;
-      op.vesting_shares = sam_vest;
+      BOOST_TEST_MESSAGE( "--- Test failure powering down coining shares that are delegated" );
+      sam_coin.amount += 1000;
+      op.coining_shares = sam_coin;
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
       tx.clear();
-      withdraw.vesting_shares = asset( sam_vest.amount, VESTS_SYMBOL );
+      withdraw.coining_shares = asset( sam_coin.amount, COINS_SYMBOL );
       tx.operations.push_back( withdraw );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Remove a delegation and ensure it is returned after 1 week" );
       tx.clear();
-      op.vesting_shares = ASSET( "0.000000 VESTS" );
+      op.coining_shares = ASSET( "0.000000 COINS" );
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      auto exp_obj = db.get_index< vesting_delegation_expiration_index, by_id >().begin();
-      auto end = db.get_index< vesting_delegation_expiration_index, by_id >().end();
+      auto exp_obj = db.get_index< coining_delegation_expiration_index, by_id >().begin();
+      auto end = db.get_index< coining_delegation_expiration_index, by_id >().end();
 
       BOOST_REQUIRE( exp_obj != end );
       BOOST_REQUIRE( exp_obj->delegator == "sam" );
-      BOOST_REQUIRE( exp_obj->vesting_shares == sam_vest );
-      BOOST_REQUIRE( exp_obj->expiration == db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS );
-      BOOST_REQUIRE( db.get_account( "sam" ).delegated_vesting_shares == sam_vest );
-      BOOST_REQUIRE( db.get_account( "dave" ).received_vesting_shares == ASSET( "0.000000 VESTS" ) );
-      delegation = db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
+      BOOST_REQUIRE( exp_obj->coining_shares == sam_coin );
+      BOOST_REQUIRE( exp_obj->expiration == db.head_block_time() + BEARSHARES_CASHOUT_WINDOW_SECONDS );
+      BOOST_REQUIRE( db.get_account( "sam" ).delegated_coining_shares == sam_coin );
+      BOOST_REQUIRE( db.get_account( "dave" ).received_coining_shares == ASSET( "0.000000 COINS" ) );
+      delegation = db.find< coining_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
       BOOST_REQUIRE( delegation == nullptr );
 
-      generate_blocks( exp_obj->expiration + STEEMIT_BLOCK_INTERVAL );
+      generate_blocks( exp_obj->expiration + BEARSHARES_BLOCK_INTERVAL );
 
-      exp_obj = db.get_index< vesting_delegation_expiration_index, by_id >().begin();
-      end = db.get_index< vesting_delegation_expiration_index, by_id >().end();
+      exp_obj = db.get_index< coining_delegation_expiration_index, by_id >().begin();
+      end = db.get_index< coining_delegation_expiration_index, by_id >().end();
 
       BOOST_REQUIRE( exp_obj == end );
-      BOOST_REQUIRE( db.get_account( "sam" ).delegated_vesting_shares == ASSET( "0.000000 VESTS" ) );
+      BOOST_REQUIRE( db.get_account( "sam" ).delegated_coining_shares == ASSET( "0.000000 COINS" ) );
    }
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
+BOOST_AUTO_TEST_CASE( issue_971_coining_removal )
 {
    // This is a regression test specifically for issue #971
    try
    {
-      BOOST_TEST_MESSAGE( "Test Issue 971 Vesting Removal" );
+      BOOST_TEST_MESSAGE( "Test Issue 971 Coining Removal" );
       ACTORS( (alice)(bob) )
       generate_block();
 
-      vest( "alice", ASSET( "1000.000 TESTS" ) );
+      coin( "alice", ASSET( "1000.000 TESTS" ) );
 
       generate_block();
 
@@ -6428,12 +6428,12 @@ BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
       generate_block();
 
       signed_transaction tx;
-      delegate_vesting_shares_operation op;
-      op.vesting_shares = ASSET( "10000000.000000 VESTS");
+      delegate_coining_shares_operation op;
+      op.coining_shares = ASSET( "10000000.000000 COINS");
       op.delegator = "alice";
       op.delegatee = "bob";
 
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -6441,8 +6441,8 @@ BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
       const account_object& alice_acc = db.get_account( "alice" );
       const account_object& bob_acc = db.get_account( "bob" );
 
-      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "10000000.000000 VESTS"));
-      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "10000000.000000 VESTS"));
+      BOOST_REQUIRE( alice_acc.delegated_coining_shares == ASSET( "10000000.000000 COINS"));
+      BOOST_REQUIRE( bob_acc.received_coining_shares == ASSET( "10000000.000000 COINS"));
 
       generate_block();
 
@@ -6456,7 +6456,7 @@ BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
 
       generate_block();
 
-      op.vesting_shares = ASSET( "0.000000 VESTS" );
+      op.coining_shares = ASSET( "0.000000 COINS" );
 
       tx.clear();
       tx.operations.push_back( op );
@@ -6464,8 +6464,8 @@ BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
       db.push_transaction( tx, 0 );
       generate_block();
 
-      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "10000000.000000 VESTS"));
-      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "0.000000 VESTS"));
+      BOOST_REQUIRE( alice_acc.delegated_coining_shares == ASSET( "10000000.000000 COINS"));
+      BOOST_REQUIRE( bob_acc.received_coining_shares == ASSET( "0.000000 COINS"));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -6482,17 +6482,17 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_validate )
 
       BOOST_TEST_MESSAGE( "--- Testing more than 100% weight on a single route" );
       comment_payout_beneficiaries b;
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEMIT_100_PERCENT + 1 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), BEARSHARES_100_PERCENT + 1 ) );
       op.extensions.insert( b );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- Testing more than 100% total weight" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEMIT_1_PERCENT * 75 ) );
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), STEEMIT_1_PERCENT * 75 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), BEARSHARES_1_PERCENT * 75 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), BEARSHARES_1_PERCENT * 75 ) );
       op.extensions.clear();
       op.extensions.insert( b );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- Testing maximum number of routes" );
       b.beneficiaries.clear();
@@ -6511,29 +6511,29 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_validate )
       std::sort( b.beneficiaries.begin(), b.beneficiaries.end() );
       op.extensions.clear();
       op.extensions.insert( b );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Testing duplicate accounts" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEMIT_1_PERCENT * 2 ) );
-      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", BEARSHARES_1_PERCENT * 2 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", BEARSHARES_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- Testing incorrect account sort order" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEMIT_1_PERCENT ) );
-      b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", BEARSHARES_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "alice", BEARSHARES_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- Testing correct account sort order" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEMIT_1_PERCENT ) );
-      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "alice", BEARSHARES_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", BEARSHARES_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
       op.validate();
@@ -6564,16 +6564,16 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       comment.body = "foobar";
 
       tx.operations.push_back( comment );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.set_expiration( db.head_block_time() + BEARSHARES_MIN_TRANSACTION_EXPIRATION_LIMIT );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx );
 
       BOOST_TEST_MESSAGE( "--- Test failure on more than 8 benefactors" );
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), BEARSHARES_1_PERCENT ) );
 
       for( size_t i = 0; i < 8; i++ )
       {
-         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( STEEMIT_INIT_MINER_NAME + fc::to_string( i ) ), STEEMIT_1_PERCENT ) );
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( BEARSHARES_INIT_MINER_NAME + fc::to_string( i ) ), BEARSHARES_1_PERCENT ) );
       }
 
       op.author = "alice";
@@ -6583,29 +6583,29 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), chain::plugin_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx ), chain::plugin_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test specifying a non-existent benefactor" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "doug" ), STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "doug" ), BEARSHARES_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test setting when comment has been voted on" );
       vote.author = "alice";
       vote.permlink = "test";
       vote.voter = "bob";
-      vote.weight = STEEMIT_100_PERCENT;
+      vote.weight = BEARSHARES_100_PERCENT;
 
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), 25 * STEEMIT_1_PERCENT ) );
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), 50 * STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), 25 * BEARSHARES_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), 50 * BEARSHARES_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
 
@@ -6614,7 +6614,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test success" );
@@ -6626,11 +6626,11 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       BOOST_TEST_MESSAGE( "--- Test setting when there are already beneficiaries" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "dave" ), 25 * STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "dave" ), 25 * BEARSHARES_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+      BEARSHARES_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Payout and verify rewards were split properly" );
@@ -6639,25 +6639,25 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time - STEEMIT_BLOCK_INTERVAL );
+      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time - BEARSHARES_BLOCK_INTERVAL );
 
       db_plugin->debug_update( [=]( database& db )
       {
          db.modify( db.get_dynamic_global_properties(), [=]( dynamic_global_property_object& gpo )
          {
-            gpo.current_supply -= gpo.total_reward_fund_steem;
-            gpo.total_reward_fund_steem = ASSET( "100.000 TESTS" );
-            gpo.current_supply += gpo.total_reward_fund_steem;
+            gpo.current_supply -= gpo.total_reward_fund_bears;
+            gpo.total_reward_fund_bears = ASSET( "100.000 TESTS" );
+            gpo.current_supply += gpo.total_reward_fund_bears;
          });
       });
 
       generate_block();
 
-      BOOST_REQUIRE( db.get_account( "bob" ).reward_steem_balance == ASSET( "0.000 TESTS" ) );
-      BOOST_REQUIRE( db.get_account( "bob" ).reward_sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "bob" ).reward_vesting_steem.amount + db.get_account( "sam" ).reward_vesting_steem.amount == db.get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
-      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) == db.get_account( "bob" ).reward_vesting_steem.amount + 2 );
-      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) * 2 == db.get_account( "sam" ).reward_vesting_steem.amount + 3 );
+      BOOST_REQUIRE( db.get_account( "bob" ).reward_bears_balance == ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "bob" ).reward_bsd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "bob" ).reward_coining_bears.amount + db.get_account( "sam" ).reward_coining_bears.amount == db.get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
+      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_bsd_balance.amount + db.get_account( "alice" ).reward_coining_bears.amount ) == db.get_account( "bob" ).reward_coining_bears.amount + 2 );
+      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_bsd_balance.amount + db.get_account( "alice" ).reward_coining_bears.amount ) * 2 == db.get_account( "sam" ).reward_coining_bears.amount + 3 );
    }
    FC_LOG_AND_RETHROW()
 }

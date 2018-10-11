@@ -1,7 +1,7 @@
 
-#include <steemit/protocol/sign_state.hpp>
+#include <bearshares/protocol/sign_state.hpp>
 
-namespace steemit { namespace protocol {
+namespace bearshares { namespace protocol {
 
 bool sign_state::signed_by( const public_key_type& k )
 {
@@ -41,7 +41,7 @@ bool sign_state::check_authority( const authority& auth, uint32_t depth, bool en
       }
 
       membership++;
-      if( enforce_membership_limit && membership >= STEEMIT_MAX_AUTHORITY_MEMBERSHIP )
+      if( enforce_membership_limit && membership >= BEARSHARES_MAX_AUTHORITY_MEMBERSHIP )
       {
          return false;
       }
@@ -69,7 +69,7 @@ bool sign_state::check_authority( const authority& auth, uint32_t depth, bool en
       }
 
       membership++;
-      if( enforce_membership_limit && membership >= STEEMIT_MAX_AUTHORITY_MEMBERSHIP )
+      if( enforce_membership_limit && membership >= BEARSHARES_MAX_AUTHORITY_MEMBERSHIP )
       {
          return false;
       }
@@ -100,4 +100,4 @@ sign_state::sign_state(
    approved_by.insert( "temp"  );
 }
 
-} } // steemit::protocol
+} } // bearshares::protocol

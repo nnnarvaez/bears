@@ -1,6 +1,6 @@
 
-#include <steemit/protocol/transaction.hpp>
-#include <steemit/protocol/exceptions.hpp>
+#include <bearshares/protocol/transaction.hpp>
+#include <bearshares/protocol/exceptions.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
@@ -8,7 +8,7 @@
 
 #include <algorithm>
 
-namespace steemit { namespace protocol {
+namespace bearshares { namespace protocol {
 
 digest_type signed_transaction::merkle_digest()const
 {
@@ -39,7 +39,7 @@ void transaction::validate() const
       operation_validate(op);
 }
 
-steemit::protocol::transaction_id_type steemit::protocol::transaction::id() const
+bearshares::protocol::transaction_id_type bearshares::protocol::transaction::id() const
 {
    auto h = digest();
    transaction_id_type result;
@@ -47,14 +47,14 @@ steemit::protocol::transaction_id_type steemit::protocol::transaction::id() cons
    return result;
 }
 
-const signature_type& steemit::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)
+const signature_type& bearshares::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)
 {
    digest_type h = sig_digest( chain_id );
    signatures.push_back(key.sign_compact(h));
    return signatures.back();
 }
 
-signature_type steemit::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const
+signature_type bearshares::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const
 {
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
@@ -120,7 +120,7 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
          s.approved_by.insert( id );
       for( auto id : required_posting )
       {
-         STEEMIT_ASSERT( s.check_authority(id, enforce_membership_limit) ||
+         BEARSHARES_ASSERT( s.check_authority(id, enforce_membership_limit) ||
                           s.check_authority(get_active(id), enforce_membership_limit) ||
                           s.check_authority(get_owner(id), enforce_membership_limit),
                           tx_missing_posting_auth, "Missing Posting Authority ${id}",
@@ -129,7 +129,7 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
                           ("active",get_active(id))
                           ("owner",get_owner(id)) );
       }
-      STEEMIT_ASSERT(
+      BEARSHARES_ASSERT(
          !s.remove_unused_signatures(),
          tx_irrelevant_sig,
          "Unnecessary signature(s) detected"
@@ -147,25 +147,25 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
 
    for( const auto& auth : other )
    {
-      STEEMIT_ASSERT( s.check_authority(auth, enforce_membership_limit), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
+      BEARSHARES_ASSERT( s.check_authority(auth, enforce_membership_limit), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
    }
 
    // fetch all of the top level authorities
    for( auto id : required_active )
    {
-      STEEMIT_ASSERT( s.check_authority(id, enforce_membership_limit) ||
+      BEARSHARES_ASSERT( s.check_authority(id, enforce_membership_limit) ||
                        s.check_authority(get_owner(id), enforce_membership_limit),
                        tx_missing_active_auth, "Missing Active Authority ${id}", ("id",id)("auth",get_active(id))("owner",get_owner(id)) );
    }
 
    for( auto id : required_owner )
    {
-      STEEMIT_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
+      BEARSHARES_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
                        s.check_authority(get_owner(id), enforce_membership_limit),
                        tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id",id)("auth",get_owner(id)) );
    }
 
-   STEEMIT_ASSERT(
+   BEARSHARES_ASSERT(
       !s.remove_unused_signatures(),
       tx_irrelevant_sig,
       "Unnecessary signature(s) detected"
@@ -179,7 +179,7 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
    flat_set<public_key_type> result;
    for( const auto&  sig : signatures )
    {
-      STEEMIT_ASSERT(
+      BEARSHARES_ASSERT(
          result.insert( fc::ecc::public_key(sig,d) ).second,
          tx_duplicate_sig,
          "Duplicate Signature detected" );
@@ -264,7 +264,7 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
       result.erase( k );
       try
       {
-         steemit::protocol::verify_authority(
+         bearshares::protocol::verify_authority(
             operations,
             result,
             get_active,
@@ -295,7 +295,7 @@ void signed_transaction::verify_authority(
    uint32_t max_recursion,
    bool enforce_membership_limit )const
 { try {
-   steemit::protocol::verify_authority(
+   bearshares::protocol::verify_authority(
       operations,
       get_signature_keys( chain_id ),
       get_active,
@@ -309,4 +309,4 @@ void signed_transaction::verify_authority(
       enforce_membership_limit );
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
-} } // steemit::protocol
+} } // bearshares::protocol

@@ -1,15 +1,15 @@
-#include <steemit/account_by_key/account_by_key_plugin.hpp>
-#include <steemit/account_by_key/account_by_key_objects.hpp>
+#include <bearshares/account_by_key/account_by_key_plugin.hpp>
+#include <bearshares/account_by_key/account_by_key_objects.hpp>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <bearshares/chain/account_object.hpp>
+#include <bearshares/chain/database.hpp>
+#include <bearshares/chain/index.hpp>
+#include <bearshares/chain/operation_notification.hpp>
 
 #include <graphene/schema/schema.hpp>
 #include <graphene/schema/schema_impl.hpp>
 
-namespace steemit { namespace account_by_key {
+namespace bearshares { namespace account_by_key {
 
 namespace detail
 {
@@ -19,7 +19,7 @@ class account_by_key_plugin_impl
    public:
       account_by_key_plugin_impl( account_by_key_plugin& _plugin ) : _self( _plugin ) {}
 
-      steemit::chain::database& database()
+      bearshares::chain::database& database()
       {
          return _self.database();
       }
@@ -143,7 +143,7 @@ struct post_operation_visitor
 
    void operator()( const hardfork_operation& op )const
    {
-      if( op.hardfork_id == STEEMIT_HARDFORK_0_9 )
+      if( op.hardfork_id == BEARSHARES_HARDFORK_0_9 )
       {
          auto& db = _plugin.database();
 
@@ -155,7 +155,7 @@ struct post_operation_visitor
 
             db.create< key_lookup_object >( [&]( key_lookup_object& o )
             {
-               o.key = public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" );
+               o.key = public_key_type( "SHR7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" );
                o.account = account->name;
             });
          }
@@ -241,7 +241,7 @@ void account_by_key_plugin_impl::post_operation( const operation_notification& n
 
 } // detail
 
-account_by_key_plugin::account_by_key_plugin( steemit::app::application* app )
+account_by_key_plugin::account_by_key_plugin( bearshares::app::application* app )
    : plugin( app ), my( new detail::account_by_key_plugin_impl( *this ) ) {}
 
 void account_by_key_plugin::plugin_set_program_options(
@@ -269,6 +269,6 @@ void account_by_key_plugin::plugin_startup()
    app().register_api_factory< account_by_key_api >( "account_by_key_api" );
 }
 
-} } // steemit::account_by_key
+} } // bearshares::account_by_key
 
-STEEMIT_DEFINE_PLUGIN( account_by_key, steemit::account_by_key::account_by_key_plugin )
+BEARSHARES_DEFINE_PLUGIN( account_by_key, bearshares::account_by_key::account_by_key_plugin )
