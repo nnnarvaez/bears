@@ -11,7 +11,7 @@
 #define BEARSHARES_INIT_PUBLIC_KEY_STR             (std::string( bearshares::protocol::public_key_type(BEARSHARES_INIT_PRIVATE_KEY.get_public_key()) ))
 #define BEARSHARES_CHAIN_ID                        (fc::sha256::hash("testnet"))
 
-#define COINS_SYMBOL  (uint64_t(6) | (uint64_t('V') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< COINS with 6 digits of precision
+#define COINS_SYMBOL  (uint64_t(6) | (uint64_t('C') << 8) | (uint64_t('O') << 16) | (uint64_t('I') << 24) | (uint64_t('N') << 32) | (uint64_t('S') << 40)) ///< COINS with 6 digits of precision
 #define BEARS_SYMBOL  (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< BEARS with 3 digits of precision
 #define BSD_SYMBOL    (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('B') << 16) | (uint64_t('D') << 24) ) ///< Test Backed Dollars with 3 digits of precision
 #define SHRD_SYMBOL   (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('S') << 16) | (uint64_t('T') << 24) | (uint64_t('D') << 32) ) ///< Test Dollars with 3 digits of precision
@@ -42,10 +42,10 @@
 
 #define BEARSHARES_INIT_PUBLIC_KEY_STR             "SHR7YDq7bh9EG3oufCAPRjf1ZESqCqjdjj55Xp2QXDTnYndVqxBom"
 #define BEARSHARES_CHAIN_ID                        (fc::sha256::hash("I love Pakistan"))//(bearshares::protocol::chain_id_type())
-#define COINS_SYMBOL  (uint64_t(6) | (uint64_t('V') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< COINS with 6 digits of precision
-#define BEARS_SYMBOL  (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('T') << 16) | (uint64_t('E') << 24) | (uint64_t('E') << 32) | (uint64_t('M') << 40)) ///< BEARS with 3 digits of precision
-#define BSD_SYMBOL    (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('B') << 16) | (uint64_t('D') << 24) ) ///< BEARS Backed Dollars with 3 digits of precision
-#define SHRD_SYMBOL   (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('T') << 16) | (uint64_t('M') << 24) | (uint64_t('D') << 32) ) ///< BEARS Dollars with 3 digits of precision
+#define COINS_SYMBOL  (uint64_t(6) | (uint64_t('C') << 8) | (uint64_t('O') << 16) | (uint64_t('I') << 24) | (uint64_t('N') << 32) | (uint64_t('S') << 40)) ///< COINS with 6 digits of precision
+#define BEARS_SYMBOL  (uint64_t(3) | (uint64_t('B') << 8) | (uint64_t('E') << 16) | (uint64_t('A') << 24) | (uint64_t('R') << 32) | (uint64_t('S') << 40)) ///< BEARS with 3 digits of precision
+#define BSD_SYMBOL    (uint64_t(3) | (uint64_t('B') << 8) | (uint64_t('S') << 16) | (uint64_t('D') << 24) ) ///< BEARS Backed Dollars with 3 digits of precision
+#define SHRD_SYMBOL   (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('H') << 16) | (uint64_t('R') << 24) | (uint64_t('D') << 32) ) ///< BEARS Dollars with 3 digits of precision
 #define BEARSHARES_SYMBOL                          "BEARS"
 #define BEARSHARES_ADDRESS_PREFIX                  "SHR"
 
@@ -215,7 +215,7 @@
 #define BEARSHARES_MAX_PERMLINK_LENGTH             256
 #define BEARSHARES_MAX_WITNESS_URL_LENGTH          2048
 
-#define BEARSHARES_INIT_SUPPLY                     int64_t(25000000000)
+#define BEARSHARES_INIT_SUPPLY                     int64_t(500000000000)
 #define BEARSHARES_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
 #define BEARSHARES_MAX_SIG_CHECK_DEPTH             2
 
