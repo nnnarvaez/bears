@@ -121,7 +121,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
             2>&1 &
     # sleep for a moment to allow the writer node to be ready to accept connections from the readers
     sleep 30
-    PORT_NUM=8092
+    PORT_NUM=6992
     cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
     CORES=$(nproc)
     PROCESSES=$((CORES * 4))
@@ -131,7 +131,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
         ((PORT_NUM++))
     done
     echo } >> /etc/nginx/healthcheck.conf
-    PORT_NUM=8092
+    PORT_NUM=6992
     for (( i=2; i<=$PROCESSES; i++ ))
       do
         exec chpst -ubearsd \
