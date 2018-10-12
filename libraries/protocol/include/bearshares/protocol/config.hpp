@@ -215,7 +215,7 @@
 #define BEARSHARES_MAX_PERMLINK_LENGTH             256
 #define BEARSHARES_MAX_WITNESS_URL_LENGTH          2048
 
-#define BEARSHARES_INIT_SUPPLY                     int64_t(500000000000)
+#define BEARSHARES_INIT_SUPPLY                     (int64_t( 500 ) * int64_t( 1000000 ) * int64_t( 1000 ))
 #define BEARSHARES_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
 #define BEARSHARES_MAX_SIG_CHECK_DEPTH             2
 
