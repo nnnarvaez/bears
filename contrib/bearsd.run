@@ -113,7 +113,7 @@ cp /etc/nginx/bearsd.nginx.conf /etc/nginx/nginx.conf
 if [[ "$USE_MULTICORE_READONLY" ]]; then
     exec chpst -ubearsd \
         $BEARSD \
-            --rpc-endpoint=127.0.0.1:8091 \
+            --rpc-endpoint=127.0.0.1:6991 \
             --p2p-endpoint=0.0.0.0:3331 \
             --data-dir=$HOME \
             $ARGS \
@@ -138,14 +138,14 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
         $BEARSD \
           --rpc-endpoint=127.0.0.1:$PORT_NUM \
           --data-dir=$HOME \
-          --read-forward-rpc=127.0.0.1:8091 \
+          --read-forward-rpc=127.0.0.1:6991 \
           --read-only \
           2>&1 &
           ((PORT_NUM++))
           sleep 1
     done
     # start nginx now that the config file is complete with all endpoints
-    # all of the read-only processes will connect to the write node onport 8091
+    # all of the read-only processes will connect to the write node onport 6991
     # nginx will balance all incoming traffic on port 6990
     rm /etc/nginx/sites-enabled/default
     cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
@@ -154,7 +154,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
     service nginx restart
 elif [[ "$USE_NGINX_FRONTEND" ]]; then
     cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
-    echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
+    echo server 127.0.0.1:6991\; >> /etc/nginx/healthcheck.conf
     echo } >> /etc/nginx/healthcheck.conf
     rm /etc/nginx/sites-enabled/default
     cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
@@ -162,7 +162,7 @@ elif [[ "$USE_NGINX_FRONTEND" ]]; then
     service nginx restart
     exec chpst -ubearsd \
         $BEARSD \
-            --rpc-endpoint=0.0.0.0:8091 \
+            --rpc-endpoint=0.0.0.0:6991 \
             --p2p-endpoint=0.0.0.0:3331 \
             --data-dir=$HOME \
             $ARGS \
