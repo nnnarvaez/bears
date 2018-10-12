@@ -2427,7 +2427,7 @@ void database::init_genesis( uint64_t init_supply )
          p.participation_count = 128;
          p.current_supply = asset( init_supply, BEARS_SYMBOL );
          p.virtual_supply = p.current_supply;
-	 p.current_bsd_supply = asset( 10000, BSD_SYMBOL );
+	   p.current_bsd_supply = asset( 10000, BSD_SYMBOL );
          p.maximum_block_size = BEARSHARES_MAX_BLOCK_SIZE;
       } );
 
@@ -3792,11 +3792,13 @@ void database::apply_hardfork( uint32_t hardfork )
             // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
             FC_ASSERT( post_rf.id._id == 0 );
 
+#ifndef IS_TEST_NET
             modify( gpo, [&]( dynamic_global_property_object& g )
             {
                g.total_reward_fund_bears = asset( 0, BEARS_SYMBOL );
                g.total_reward_shares2 = 0;
             });
+#endif
 
             /*
             * For all current comments we will either keep their current cashout time, or extend it to 1 week
