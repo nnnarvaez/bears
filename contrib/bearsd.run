@@ -146,7 +146,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
     done
     # start nginx now that the config file is complete with all endpoints
     # all of the read-only processes will connect to the write node onport 8091
-    # nginx will balance all incoming traffic on port 8090
+    # nginx will balance all incoming traffic on port 6990
     rm /etc/nginx/sites-enabled/default
     cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
     /etc/init.d/fcgiwrap restart
@@ -171,7 +171,7 @@ elif [[ "$USE_NGINX_FRONTEND" ]]; then
 else
     exec chpst -ubearsd \
         $BEARSD \
-            --rpc-endpoint=0.0.0.0:8090 \
+            --rpc-endpoint=0.0.0.0:6990 \
             --p2p-endpoint=0.0.0.0:3331 \
             --data-dir=$HOME \
             $ARGS \

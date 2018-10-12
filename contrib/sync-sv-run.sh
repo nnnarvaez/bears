@@ -28,7 +28,7 @@ fi
 BLOCKCHAIN_TIME=$(
     curl --silent --max-time 20 \
         --data '{"id":39,"method":"get_dynamic_global_properties","params":[]}' \
-        localhost:8090 | jq -r .result.time
+        localhost:6990 | jq -r .result.time
 )
 
 if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
