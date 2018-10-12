@@ -114,7 +114,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
     exec chpst -ubearsd \
         $BEARSD \
             --rpc-endpoint=127.0.0.1:8091 \
-            --p2p-endpoint=0.0.0.0:2001 \
+            --p2p-endpoint=0.0.0.0:3331 \
             --data-dir=$HOME \
             $ARGS \
             $BEARSD_EXTRA_OPTS \
@@ -163,7 +163,7 @@ elif [[ "$USE_NGINX_FRONTEND" ]]; then
     exec chpst -ubearsd \
         $BEARSD \
             --rpc-endpoint=0.0.0.0:8091 \
-            --p2p-endpoint=0.0.0.0:2001 \
+            --p2p-endpoint=0.0.0.0:3331 \
             --data-dir=$HOME \
             $ARGS \
             $BEARSD_EXTRA_OPTS \
@@ -172,7 +172,7 @@ else
     exec chpst -ubearsd \
         $BEARSD \
             --rpc-endpoint=0.0.0.0:8090 \
-            --p2p-endpoint=0.0.0.0:2001 \
+            --p2p-endpoint=0.0.0.0:3331 \
             --data-dir=$HOME \
             $ARGS \
             $BEARSD_EXTRA_OPTS \

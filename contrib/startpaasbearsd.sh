@@ -147,7 +147,7 @@ service nginx restart
 exec chpst -ubearsd \
     $BEARSD \
         --rpc-endpoint=0.0.0.0:8091 \
-        --p2p-endpoint=0.0.0.0:2001 \
+        --p2p-endpoint=0.0.0.0:3331 \
         --data-dir=$HOME \
         $ARGS \
         $BEARSD_EXTRA_OPTS \
